@@ -23,11 +23,14 @@ function makeHand(cards: ReadonlyArray<Card>, bet = 10, overrides: Partial<Hand>
 }
 
 function makeValue(total: number, isSoft = false, isBust = false, isBlackjack = false): HandValue {
+  const hardTotal = isSoft ? total - 10 : total;
   return {
     total,
     isSoft,
     isBust,
     isBlackjack,
+    hardTotal,
+    softTotal: isSoft ? total : null,
   };
 }
 

@@ -13,6 +13,12 @@ import { PlayerArea } from './PlayerArea';
 import { RoundResultBanner } from './RoundResultBanner';
 import { formatCurrency, type TableHandSize } from './Table.types';
 
+const DEALER_RHYTHM = {
+  beforeReveal: 600,
+  betweenCards: 500,
+  beforeFinish: 400,
+} as const;
+
 function TableSkeleton(): JSX.Element {
   return (
     <main className="min-h-screen bg-emerald-900 p-6 md:p-8">
@@ -98,7 +104,56 @@ export function Table(): JSX.Element {
   const bankroll = useGameStore((state) => state.bankroll);
   const lastRoundResult = useGameStore((state) => state.lastRoundResult);
   const shouldOfferInsurance = useGameStore(selectShouldOfferInsurance);
+  const revealHoleCard = useGameStore((state) => state.revealHoleCard);
+  const dealerDrawNext = useGameStore((state) => state.dealerDrawNext);
+  const finishDealerTurn = useGameStore((state) => state.finishDealerTurn);
   const handSize = useTableHandSize();
+
+  useEffect(() => {
+    if (phase !== 'dealerTurn') {
+      return;
+    }
+
+    let cancelled = false;
+    const timeouts: number[] = [];
+
+    const schedule = (callback: () => void, delayMs: number): void => {
+      const timeoutId = window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+        callback();
+      }, delayMs);
+      timeouts.push(timeoutId);
+    };
+
+    const runDealerDrawLoop = (): void => {
+      const { pendingDealerSteps } = useGameStore.getState();
+      if (pendingDealerSteps.length === 0) {
+        schedule(() => {
+          finishDealerTurn();
+        }, DEALER_RHYTHM.beforeFinish);
+        return;
+      }
+
+      schedule(() => {
+        dealerDrawNext();
+        runDealerDrawLoop();
+      }, DEALER_RHYTHM.betweenCards);
+    };
+
+    schedule(() => {
+      revealHoleCard();
+      runDealerDrawLoop();
+    }, DEALER_RHYTHM.beforeReveal);
+
+    return () => {
+      cancelled = true;
+      for (const timeoutId of timeouts) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [phase, revealHoleCard, dealerDrawNext, finishDealerTurn]);
 
   if (hydratedPhase === undefined) {
     return <TableSkeleton />;

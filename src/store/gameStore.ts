@@ -106,6 +106,8 @@ function initialState(): Omit<GameStoreState, keyof GameStoreActions> {
     isInsuranceOffered: false,
     forceNewShoe: false,
     roundStartBankroll: null,
+    pendingDealerSteps: [],
+    isHoleCardRevealed: false,
   };
 }
 
@@ -142,6 +144,8 @@ export interface GameStoreState {
   isInsuranceOffered: boolean;
   forceNewShoe: boolean;
   roundStartBankroll: number | null;
+  pendingDealerSteps: ReadonlyArray<Card>;
+  isHoleCardRevealed: boolean;
 }
 
 interface GameStoreActions {
@@ -156,6 +160,9 @@ interface GameStoreActions {
   split: () => void;
   surrender: () => void;
   playDealer: () => void;
+  revealHoleCard: () => void;
+  dealerDrawNext: () => void;
+  finishDealerTurn: () => void;
   resolveRound: () => void;
   nextRound: () => void;
   resetBankroll: (amount: number) => void;
@@ -281,6 +288,8 @@ export const useGameStore = create<GameStore>()(
           forceNewShoe: false,
           roundStartBankroll: state.bankroll,
           lastRoundResult: null,
+          pendingDealerSteps: [],
+          isHoleCardRevealed: false,
         });
 
         if (playerNatural) {
@@ -329,6 +338,8 @@ export const useGameStore = create<GameStore>()(
           set((current) => ({
             playerHands: current.playerHands.map((hand) => ({ ...hand, isResolved: true })),
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           }));
           get().playDealer();
         }
@@ -349,6 +360,8 @@ export const useGameStore = create<GameStore>()(
           set((current) => ({
             playerHands: current.playerHands.map((hand) => ({ ...hand, isResolved: true })),
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           }));
           get().playDealer();
         }
@@ -395,6 +408,8 @@ export const useGameStore = create<GameStore>()(
             playerHands,
             shoe: draw.shoe,
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           };
         });
 
@@ -426,6 +441,8 @@ export const useGameStore = create<GameStore>()(
           return {
             playerHands,
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           };
         });
 
@@ -475,6 +492,8 @@ export const useGameStore = create<GameStore>()(
             playerHands,
             shoe: draw.shoe,
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           };
         });
 
@@ -517,6 +536,8 @@ export const useGameStore = create<GameStore>()(
             splitsUsed: current.splitsUsed + 1,
             activeHandIndex: nextIndex >= 0 ? nextIndex : current.activeHandIndex,
             phase: nextIndex >= 0 ? current.phase : 'dealerTurn',
+            pendingDealerSteps: nextIndex >= 0 ? current.pendingDealerSteps : [],
+            isHoleCardRevealed: nextIndex >= 0 ? current.isHoleCardRevealed : false,
           };
         });
 
@@ -556,6 +577,8 @@ export const useGameStore = create<GameStore>()(
             bankroll,
             playerHands,
             phase: 'dealerTurn',
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
           };
         });
 
@@ -570,9 +593,10 @@ export const useGameStore = create<GameStore>()(
           return;
         }
 
+        const dealerValue = handValue(state.dealerHand.cards);
         const shouldPlayDealer = state.playerHands.some((hand) => !hand.isSurrendered && !handValue(hand.cards).isBust);
 
-        if (!shouldPlayDealer) {
+        if (!shouldPlayDealer || dealerValue.isBlackjack) {
           set({ phase: 'resolution' });
           get().resolveRound();
           return;
@@ -582,11 +606,55 @@ export const useGameStore = create<GameStore>()(
         set({
           dealerHand: {
             ...state.dealerHand,
-            cards: result.hand,
-            isStood: true,
+            isStood: result.steps.length === 0,
           },
           shoe: result.shoe,
+          pendingDealerSteps: result.steps,
+          isHoleCardRevealed: false,
+        });
+      },
+      revealHoleCard: () => {
+        const state = get();
+        if (state.phase !== 'dealerTurn') {
+          warnInvalid('revealHoleCard');
+          return;
+        }
+
+        set({ isHoleCardRevealed: true });
+      },
+      dealerDrawNext: () => {
+        const state = get();
+        if (state.phase !== 'dealerTurn') {
+          warnInvalid('dealerDrawNext');
+          return;
+        }
+        if (state.pendingDealerSteps.length === 0) {
+          return;
+        }
+
+        const [nextCard, ...remainingSteps] = state.pendingDealerSteps;
+        set({
+          dealerHand: {
+            ...state.dealerHand,
+            cards: [...state.dealerHand.cards, nextCard],
+            isStood: remainingSteps.length === 0,
+          },
+          pendingDealerSteps: remainingSteps,
+        });
+      },
+      finishDealerTurn: () => {
+        const state = get();
+        if (state.phase !== 'dealerTurn' || state.pendingDealerSteps.length > 0) {
+          warnInvalid('finishDealerTurn');
+          return;
+        }
+
+        set({
           phase: 'resolution',
+          dealerHand: {
+            ...state.dealerHand,
+            isStood: true,
+          },
         });
         get().resolveRound();
       },
@@ -629,6 +697,8 @@ export const useGameStore = create<GameStore>()(
           insuranceBet: 0,
           roundStartBankroll: null,
           currentBet: bankroll === 0 ? state.currentBet : Math.min(state.currentBet, bankroll),
+          pendingDealerSteps: [],
+          isHoleCardRevealed: false,
         });
       },
       nextRound: () => {
@@ -647,6 +717,8 @@ export const useGameStore = create<GameStore>()(
           lastRoundResult: null,
           splitsUsed: 0,
           roundStartBankroll: null,
+          pendingDealerSteps: [],
+          isHoleCardRevealed: false,
         });
       },
       resetBankroll: (amount) => {
@@ -669,6 +741,8 @@ export const useGameStore = create<GameStore>()(
           lastRoundResult: null,
           splitsUsed: 0,
           roundStartBankroll: null,
+          pendingDealerSteps: [],
+          isHoleCardRevealed: false,
         });
       },
       updateRules: (rules) => {
@@ -725,6 +799,9 @@ export const selectCanDoubleDown = (state: GameStoreState): boolean => selectLeg
 export const selectIsDealerShowingAce = (state: GameStoreState): boolean => selectDealerUpcard(state)?.rank === 'A';
 
 export const selectShouldOfferInsurance = (state: GameStoreState): boolean => state.isInsuranceOffered;
+
+export const selectIsDealerTurnInProgress = (state: GameStoreState): boolean =>
+  state.phase === 'dealerTurn' && (!state.isHoleCardRevealed || state.pendingDealerSteps.length > 0);
 
 export function useHydratedGameStore<T>(selector: (state: GameStore) => T): T | undefined {
   const selected = useGameStore(selector);

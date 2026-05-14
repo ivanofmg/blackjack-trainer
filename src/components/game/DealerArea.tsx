@@ -10,6 +10,7 @@ import type { TableHandSize } from './Table.types';
 export function DealerArea({ size }: Readonly<{ size: TableHandSize }>): JSX.Element {
   const dealerHand = useGameStore((state) => state.dealerHand);
   const phase = useGameStore((state) => state.phase);
+  const isHoleCardRevealed = useGameStore((state) => state.isHoleCardRevealed);
 
   const hasCards = dealerHand.cards.length > 0;
 
@@ -26,8 +27,8 @@ export function DealerArea({ size }: Readonly<{ size: TableHandSize }>): JSX.Ele
             hand={dealerHand}
             role="dealer"
             size={size}
-            hideHoleCard={phase === 'playerTurn'}
-            showTotal={phase !== 'playerTurn'}
+            hideHoleCard={phase === 'playerTurn' || (phase === 'dealerTurn' && !isHoleCardRevealed)}
+            showTotal={phase === 'resolution' || (phase === 'dealerTurn' && isHoleCardRevealed)}
           />
         )}
       </div>

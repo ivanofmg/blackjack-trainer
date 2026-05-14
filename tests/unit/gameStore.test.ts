@@ -5,6 +5,7 @@ import type { Card, Rank, Suit } from '@/lib/blackjack/types';
 import { DEFAULT_BANKROLL } from '@/lib/storage';
 import {
   selectLegalActions,
+  selectIsDealerTurnInProgress,
   selectShouldOfferInsurance,
   useGameStore,
 } from '@/store/gameStore';
@@ -38,6 +39,18 @@ function setRoundShoe(shoe: Shoe): void {
 
 function state(): GameStoreState {
   return useGameStore.getState();
+}
+
+function advanceDealerTurn(): void {
+  if (state().phase !== 'dealerTurn') {
+    return;
+  }
+
+  useGameStore.getState().revealHoleCard();
+  while (state().pendingDealerSteps.length > 0) {
+    useGameStore.getState().dealerDrawNext();
+  }
+  useGameStore.getState().finishDealerTurn();
 }
 
 describe('gameStore', () => {
@@ -92,6 +105,10 @@ describe('gameStore', () => {
     useGameStore.getState().deal();
     useGameStore.getState().stand();
 
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().lastRoundResult).toBeNull();
+
+    advanceDealerTurn();
     expect(state().phase).toBe('betting');
     expect(state().playerHands[0].isResolved).toBe(true);
     expect(state().lastRoundResult).not.toBeNull();
@@ -105,6 +122,9 @@ describe('gameStore', () => {
     expect(state().playerHands[0].bet).toBe(20);
     expect(state().playerHands[0].isDoubled).toBe(true);
     expect(state().playerHands[0].cards).toHaveLength(3);
+    expect(state().phase).toBe('dealerTurn');
+
+    advanceDealerTurn();
     expect(state().phase).toBe('betting');
   });
 
@@ -124,10 +144,13 @@ describe('gameStore', () => {
     useGameStore.getState().deal();
     useGameStore.getState().split();
 
-    expect(state().phase).toBe('betting');
+    expect(state().phase).toBe('dealerTurn');
     expect(state().playerHands).toHaveLength(2);
     expect(state().playerHands.every((hand) => hand.isFromSplitAces)).toBe(true);
     expect(state().playerHands.every((hand) => hand.isResolved)).toBe(true);
+
+    advanceDealerTurn();
+    expect(state().phase).toBe('betting');
   });
 
   it('respects split limit and prevents resplit beyond maxSplits', () => {
@@ -233,6 +256,8 @@ describe('gameStore', () => {
     useGameStore.getState().deal();
     useGameStore.getState().stand();
 
+    advanceDealerTurn();
+
     expect(state().lastRoundResult?.handResults[0].resolution.outcome).toBe('push');
     expect(state().bankroll).toBe(DEFAULT_BANKROLL);
   });
@@ -242,6 +267,8 @@ describe('gameStore', () => {
     setRoundShoe(makeShoe(['10', '10', '7', '9']));
     useGameStore.getState().deal();
     useGameStore.getState().stand();
+
+    advanceDealerTurn();
 
     expect(state().bankroll).toBe(0);
     expect(state().phase).toBe('gameOver');
@@ -299,5 +326,71 @@ describe('gameStore', () => {
     useGameStore.getState().deal();
 
     expect(selectLegalActions(state())).toEqual(['hit', 'stand', 'double', 'surrender']);
+  });
+
+  it('stand enters dealerTurn with pending dealer steps and no round result yet', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().pendingDealerSteps).toEqual([makeCard('5', 'clubs')]);
+    expect(state().lastRoundResult).toBeNull();
+  });
+
+  it('revealHoleCard sets visibility flag without changing phase', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    useGameStore.getState().revealHoleCard();
+    expect(state().isHoleCardRevealed).toBe(true);
+    expect(state().phase).toBe('dealerTurn');
+  });
+
+  it('dealerDrawNext appends one card and consumes one pending step', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    const beforeCount = state().dealerHand.cards.length;
+    const beforePending = state().pendingDealerSteps.length;
+    useGameStore.getState().dealerDrawNext();
+
+    expect(state().dealerHand.cards.length).toBe(beforeCount + 1);
+    expect(state().pendingDealerSteps.length).toBe(beforePending - 1);
+  });
+
+  it('finishDealerTurn resolves only when pending steps are empty', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    useGameStore.getState().finishDealerTurn();
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().lastRoundResult).toBeNull();
+
+    useGameStore.getState().dealerDrawNext();
+    useGameStore.getState().finishDealerTurn();
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult).not.toBeNull();
+  });
+
+  it('playDealer skips animation path when all player hands are bust/surrendered', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '10']));
+    useGameStore.getState().deal();
+    useGameStore.getState().hit();
+
+    expect(state().phase).toBe('betting');
+    expect(state().pendingDealerSteps).toEqual([]);
+  });
+
+  it('player blackjack from deal still cascades directly without animated dealer turn', () => {
+    setRoundShoe(makeShoe(['A', '9', 'K', '7']));
+    useGameStore.getState().deal();
+
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult?.handResults[0].resolution.outcome).toBe('blackjack');
+    expect(selectIsDealerTurnInProgress(state())).toBe(false);
   });
 });

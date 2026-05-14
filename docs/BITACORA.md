@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 11/12 issues cerrados (mesa principal integrada; falta UI completa de apuesta)
+**Progreso Fase 1:** 12/12 issues cerrados (mesa principal integrada + ritmo dealerTurn y banner reforzado)
 
 ## Issues cerrados
 
@@ -22,6 +22,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#10** UI: componente Hand — `src/components/game/Hand.tsx`: composición de múltiples `Card` con solapamiento horizontal, estado activo y badge de total (normal/soft/BJ/bust/surrender)
 - **#10b** Fix post-review de Hand — `src/lib/blackjack/hand.ts` ahora expone `hardTotal`/`softTotal`; `Hand` recibe `role` para aria-label correcto de dealer en playerTurn y resolution
 - **#11** UI: mesa principal — `src/components/game/Table.tsx` + áreas dealer/jugador + controles + insurance prompt + banner de resultado + game over, todo conectado a `src/store/gameStore.ts`
+- **#11b** Fix post-auditoría visual de mesa — ritmo visible en `dealerTurn` con orquestación de delays en UI, store granular (`revealHoleCard`, `dealerDrawNext`, `finishDealerTurn`) y `RoundResultBanner` reforzado con jerarquía visual + delay de lectura antes de `nextRound`
 
 ## Issues abiertos en Fase 1
 
@@ -80,6 +81,9 @@ Pasar los 4 antes de commit + push + close issue.
 - **Mesa principal en `/` como Server Component + `Table` client wrapper**: evita mismatch SSR al encapsular Zustand en componentes cliente.
 - **Hidratación controlada con `useHydratedGameStore` en `Table`**: se renderiza `TableSkeleton` hasta terminar hydration de persist para evitar inconsistencias iniciales.
 - **Mapeo explícito `PlayerHand -> HandData` en `PlayerArea`**: se eliminan campos extra (`id`, `isResolved`, `isFromSplitAces`) antes de pasar props a `Hand`, manteniendo contrato de presentación estable.
+- **`playDealerHand` ahora expone `steps`**: además de `hand`/`shoe` final, devuelve la secuencia de cartas nuevas que el dealer robó para habilitar ritmo visual sin mover lógica de blackjack a UI.
+- **Store sin cascadeo automático `dealerTurn -> resolution` cuando hay cartas por mostrar**: `playDealer()` precomputa y guarda `pendingDealerSteps`; la UI (`Table`) orquesta tiempos con `setTimeout` y llama acciones granulares.
+- **Acciones granulares de dealer en store**: `revealHoleCard`, `dealerDrawNext`, `finishDealerTurn` mantienen estado real en sync con lo que ve el usuario (sin delays en store).
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -129,7 +133,7 @@ npm test
 
 ## Próximo paso
 
-**Issue #12 — UI de apuestas completa.** Reemplazar placeholder de "Repartir"
+**Issue #12 — UI de apuestas completa (BetSelector).** Reemplazar placeholder de "Repartir"
 por selector completo de apuesta (chips/input/validaciones) integrado con bankroll
 y fases del round.
 
@@ -176,6 +180,8 @@ y fases del round.
 
 - **Estado "Rendido" visualmente sutil:** el badge actual usa fondo `slate-50` + cursiva + texto `slate-500`. En auditoría visual del sandbox (deploy de Vercel) se confirmó que se distingue poco del estado normal. No bloqueante para Fase 1, pero conviene revisarlo antes de Fase 2 (Tutor de estrategia básica), donde el feedback inmediato sobre decisiones del jugador es central. Opciones a evaluar: fondo naranja/amarillo apagado, icono prepended (ej. `🏳️`), peso de fuente más alto.
 - **Cartas numéricas sin pip layout:** el centro de cada carta muestra un único símbolo grande del palo en lugar del layout tradicional de pips (ej. siete corazones distribuidos para el `7♥`). Funciona para reconocimiento general pero la diferencia entre cartas numéricas depende exclusivamente de la lectura del rank en la esquina. Evaluar antes de Fase 4 (drill de conteo Hi-Lo a `0.25s/carta`) porque la velocidad de reconocimiento podría no ser suficiente con el diseño actual.
+- **Velocidad del dealer turn configurable:** hoy hardcodeada en `DEALER_RHYTHM` (`beforeReveal: 600`, `betweenCards: 500`, `beforeFinish: 400`). Implementar en Ajustes como preset (`lento`/`medio`/`rápido`) cuando exista esa pantalla.
+- **Animación de flip de carta pendiente:** la hole card se revela de forma instantánea (sin transición). Evaluar flip CSS 3D en etapa de pulido visual.
 
 ### Validaciones pendientes
 

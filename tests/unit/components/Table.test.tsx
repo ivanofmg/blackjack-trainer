@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Table } from '@/components/game/Table';
 import type { Card, Rank, Suit } from '@/lib/blackjack/types';
@@ -31,6 +31,10 @@ function resetStore(): void {
 describe('Table', () => {
   beforeEach(() => {
     resetStore();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('shows betting phase with deal button and no cards', async () => {
@@ -97,8 +101,15 @@ describe('Table', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Stand' }));
 
-    const nextRoundButton = await screen.findByRole('button', { name: 'Siguiente mano' });
+    const nextRoundButton = await screen.findByRole(
+      'button',
+      { name: 'Siguiente mano' },
+      { timeout: 3000 },
+    );
     expect(nextRoundButton).toBeInTheDocument();
+    await waitFor(() => {
+      expect(nextRoundButton).toBeEnabled();
+    });
 
     fireEvent.click(nextRoundButton);
     await waitFor(() => {
@@ -114,7 +125,7 @@ describe('Table', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Stand' }));
 
-    expect(await screen.findByText('Te quedaste sin saldo.')).toBeInTheDocument();
+    expect(await screen.findByText('Te quedaste sin saldo.', {}, { timeout: 3000 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar bankroll ($1,000)' }));
 
     await waitFor(() => {
@@ -133,5 +144,54 @@ describe('Table', () => {
     await waitFor(() => {
       expect(screen.queryByText('El dealer muestra As. ¿Tomás seguro?')).not.toBeInTheDocument();
     });
+  });
+
+  it('orchestrates dealer rhythm in order using timers', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', '6', '7', '9', '5']));
+    render(<Table />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
+    await screen.findByRole('button', { name: 'Stand' });
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Stand' }));
+
+    expect(useGameStore.getState().phase).toBe('dealerTurn');
+    expect(useGameStore.getState().isHoleCardRevealed).toBe(false);
+    expect(useGameStore.getState().pendingDealerSteps.length).toBe(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(useGameStore.getState().isHoleCardRevealed).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(useGameStore.getState().pendingDealerSteps.length).toBe(0);
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(useGameStore.getState().phase).toBe('betting');
+    expect(useGameStore.getState().lastRoundResult).not.toBeNull();
+  });
+
+  it('cancels pending dealer timers when table unmounts', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', '6', '7', '9', '5']));
+    const { unmount } = render(<Table />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
+    await screen.findByRole('button', { name: 'Stand' });
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Stand' }));
+
+    unmount();
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(useGameStore.getState().isHoleCardRevealed).toBe(false);
+    expect(useGameStore.getState().phase).toBe('dealerTurn');
   });
 });

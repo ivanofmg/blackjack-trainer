@@ -78,6 +78,7 @@ describe('playDealerHand', () => {
 
     expect(result.hand).toEqual([...initialHand, makeCard('5', 'clubs')]);
     expect(result.shoe).toEqual([makeCard('K', 'clubs')]);
+    expect(result.steps).toEqual([makeCard('5', 'clubs')]);
     expect(result.finalValue).toEqual({
       total: 21,
       isSoft: false,
@@ -97,6 +98,7 @@ describe('playDealerHand', () => {
     expect(result.hand).toEqual(initialHand);
     expect(result.shoe).toEqual(shoe);
     expect(result.finalValue.total).toBe(17);
+    expect(result.steps).toEqual([]);
   });
 
   it('stands on soft 17 when using S17', () => {
@@ -107,6 +109,7 @@ describe('playDealerHand', () => {
 
     expect(result.hand).toEqual(initialHand);
     expect(result.shoe).toEqual(shoe);
+    expect(result.steps).toEqual([]);
     expect(result.finalValue).toEqual({
       total: 17,
       isSoft: true,
@@ -130,6 +133,7 @@ describe('playDealerHand', () => {
       makeCard('K', 'clubs'),
     ]);
     expect(result.shoe).toEqual([]);
+    expect(result.steps).toEqual([makeCard('5', 'clubs'), makeCard('K', 'clubs')]);
     expect(result.finalValue).toEqual({
       total: 22,
       isSoft: false,
@@ -149,6 +153,7 @@ describe('playDealerHand', () => {
     expect(result.hand).toEqual([...initialHand, makeCard('10', 'clubs')]);
     expect(result.shoe).toEqual([makeCard('2', 'clubs')]);
     expect(result.finalValue.isBust).toBe(true);
+    expect(result.steps).toEqual([makeCard('10', 'clubs')]);
   });
 
   it('does not hit on initial blackjack', () => {
@@ -159,6 +164,7 @@ describe('playDealerHand', () => {
 
     expect(result.hand).toEqual(initialHand);
     expect(result.shoe).toEqual(shoe);
+    expect(result.steps).toEqual([]);
     expect(result.finalValue).toEqual({
       total: 21,
       isSoft: true,
@@ -181,5 +187,25 @@ describe('playDealerHand', () => {
     expect(initialHand).toHaveLength(2);
     expect(shoe).toEqual(shoeSnapshot);
     expect(shoe).toHaveLength(2);
+  });
+
+  it('reports one step when dealer draws from 16 to 18', () => {
+    const initialHand = [makeCard('10', 'spades'), makeCard('6', 'hearts')];
+    const shoe = makeShoe(['2', 'K']);
+
+    const result = playDealerHand(initialHand, shoe, s17Rules);
+
+    expect(result.finalValue.total).toBe(18);
+    expect(result.steps).toEqual([makeCard('2', 'clubs')]);
+  });
+
+  it('reports two steps when dealer starts at 12 and reaches 19', () => {
+    const initialHand = [makeCard('10', 'spades'), makeCard('2', 'hearts')];
+    const shoe = makeShoe(['4', '3', 'K']);
+
+    const result = playDealerHand(initialHand, shoe, s17Rules);
+
+    expect(result.finalValue.total).toBe(19);
+    expect(result.steps).toEqual([makeCard('4', 'clubs'), makeCard('3', 'clubs')]);
   });
 });

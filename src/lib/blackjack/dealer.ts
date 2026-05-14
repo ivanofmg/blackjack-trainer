@@ -11,6 +11,7 @@ export interface DealerPlayResult {
   hand: ReadonlyArray<Card>;
   shoe: Shoe;
   finalValue: HandValue;
+  steps: ReadonlyArray<Card>;
 }
 
 /**
@@ -43,17 +44,20 @@ export function playDealerHand(
   let currentHand: ReadonlyArray<Card> = [...initialHand];
   let currentShoe = shoe;
   let currentValue = handValue(currentHand);
+  const steps: Card[] = [];
 
   while (shouldDealerHit(currentValue, rules)) {
     const draw = drawCard(currentShoe);
     currentHand = [...currentHand, draw.card];
     currentShoe = draw.shoe;
     currentValue = handValue(currentHand);
+    steps.push(draw.card);
   }
 
   return {
     hand: currentHand,
     shoe: currentShoe,
     finalValue: currentValue,
+    steps,
   };
 }
