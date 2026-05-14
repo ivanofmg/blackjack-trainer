@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { Hand } from '@/components/game/Hand';
+import * as handModule from '@/lib/blackjack/hand';
 import type { Card, Hand as HandData, Rank, Suit } from '@/lib/blackjack/types';
 
 function makeCard(rank: Rank, suit: Suit): Card {
@@ -55,9 +56,9 @@ describe('Hand component', () => {
   });
 
   it('shows soft total in hard/soft format', () => {
-    render(<Hand hand={makeHand([makeCard('A', 'spades'), makeCard('6', 'hearts')])} />);
+    render(<Hand hand={makeHand([makeCard('A', 'spades'), makeCard('7', 'hearts')])} />);
 
-    expect(screen.getByTestId('hand-total-badge')).toHaveTextContent('7/17');
+    expect(screen.getByTestId('hand-total-badge')).toHaveTextContent('8/18');
   });
 
   it('shows blackjack badge with amber styles for natural blackjack', () => {
@@ -120,5 +121,65 @@ describe('Hand component', () => {
         name: 'Mano del jugador con 2 cartas, total 17',
       })
     ).toBeInTheDocument();
+  });
+
+  it('renders dealer aria-label with hidden hole card', () => {
+    render(
+      <Hand
+        hand={makeHand([makeCard('A', 'spades'), makeCard('K', 'hearts')])}
+        role="dealer"
+        hideHoleCard
+        showTotal={false}
+      />
+    );
+
+    expect(
+      screen.getByRole('group', {
+        name: 'Mano del dealer con 2 cartas, carta visible: As de picas',
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('renders dealer aria-label with total when hole card is revealed', () => {
+    render(
+      <Hand
+        hand={makeHand([makeCard('A', 'spades'), makeCard('7', 'hearts')])}
+        role="dealer"
+        hideHoleCard={false}
+        showTotal
+      />
+    );
+
+    expect(
+      screen.getByRole('group', {
+        name: 'Mano del dealer con 2 cartas, total 8/18',
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps player aria-label as default when role is omitted', () => {
+    render(<Hand hand={makeHand([makeCard('10', 'hearts'), makeCard('7', 'clubs')])} showTotal={false} />);
+
+    expect(
+      screen.getByRole('group', {
+        name: 'Mano del jugador con 2 cartas',
+      })
+    ).toBeInTheDocument();
+  });
+
+  it('uses hardTotal provided by handValue for soft badge rendering', () => {
+    const spy = vi.spyOn(handModule, 'handValue').mockReturnValue({
+      total: 18,
+      isSoft: true,
+      isBust: false,
+      isBlackjack: false,
+      hardTotal: 9,
+      softTotal: 18,
+    });
+
+    render(<Hand hand={makeHand([makeCard('A', 'spades'), makeCard('7', 'hearts')])} />);
+
+    expect(screen.getByTestId('hand-total-badge')).toHaveTextContent('9/18');
+    spy.mockRestore();
   });
 });

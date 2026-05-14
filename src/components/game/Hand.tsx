@@ -17,6 +17,7 @@ type HandSizeStyles = Readonly<{
 }>;
 
 type HandStatus = 'normal' | 'soft' | 'blackjack' | 'bust' | 'surrender';
+type HandRole = NonNullable<HandProps['role']>;
 
 const SUIT_NAME_ES: Record<Suit, string> = {
   hearts: 'corazones',
@@ -91,7 +92,7 @@ function getStatus(hand: HandProps['hand'], value: ReturnType<typeof handValue>)
   return 'normal';
 }
 
-function getStatusPresentation(status: HandStatus, total: number): StatusPresentation {
+function getStatusPresentation(status: HandStatus, value: ReturnType<typeof handValue>): StatusPresentation {
   switch (status) {
     case 'surrender':
       return {
@@ -104,11 +105,11 @@ function getStatusPresentation(status: HandStatus, total: number): StatusPresent
         badgeClassName: 'bg-red-50 text-red-700',
         content: (
           <span className="inline-flex items-center gap-2">
-            <span className="line-through">{total}</span>
+            <span className="line-through">{value.total}</span>
             <span>Bust</span>
           </span>
         ),
-        ariaText: `Bust con ${total}`,
+        ariaText: `Bust con ${value.total}`,
       };
     case 'blackjack':
       return {
@@ -117,8 +118,15 @@ function getStatusPresentation(status: HandStatus, total: number): StatusPresent
         ariaText: 'BJ',
       };
     case 'soft': {
-      const hardTotal = total - 10;
-      const softLabel = `${hardTotal}/${total}`;
+      if (value.softTotal === null) {
+        return {
+          badgeClassName: 'bg-slate-100 text-slate-900',
+          content: <span>{value.total}</span>,
+          ariaText: String(value.total),
+        };
+      }
+
+      const softLabel = `${value.hardTotal}/${value.total}`;
       return {
         badgeClassName: 'bg-slate-100 text-slate-900',
         content: <span>{softLabel}</span>,
@@ -128,14 +136,15 @@ function getStatusPresentation(status: HandStatus, total: number): StatusPresent
     default:
       return {
         badgeClassName: 'bg-slate-100 text-slate-900',
-        content: <span>{total}</span>,
-        ariaText: String(total),
+        content: <span>{value.total}</span>,
+        ariaText: String(value.total),
       };
   }
 }
 
 function getGroupAriaLabel({
   cardCount,
+  role,
   hideHoleCard,
   showTotal,
   visibleUpcardLabel,
@@ -143,27 +152,31 @@ function getGroupAriaLabel({
   statusText,
 }: Readonly<{
   cardCount: number;
+  role: HandRole;
   hideHoleCard: boolean;
   showTotal: boolean;
   visibleUpcardLabel: string | null;
   status: HandStatus;
   statusText: string;
 }>): string {
-  if (hideHoleCard) {
+  const subject = role === 'dealer' ? 'Mano del dealer' : 'Mano del jugador';
+
+  // Hole card oculta es una convención del dealer; para jugador se ignora.
+  if (role === 'dealer' && hideHoleCard) {
     if (visibleUpcardLabel) {
-      return `Mano del dealer con ${cardCount} cartas, carta visible: ${visibleUpcardLabel}`;
+      return `${subject} con ${cardCount} cartas, carta visible: ${visibleUpcardLabel}`;
     }
-    return `Mano del dealer con ${cardCount} cartas`;
+    return `${subject} con ${cardCount} cartas`;
   }
 
   if (showTotal) {
     if (status === 'surrender' || status === 'bust' || status === 'blackjack') {
-      return `Mano del jugador con ${cardCount} cartas, estado ${statusText}`;
+      return `${subject} con ${cardCount} cartas, estado ${statusText}`;
     }
-    return `Mano del jugador con ${cardCount} cartas, total ${statusText}`;
+    return `${subject} con ${cardCount} cartas, total ${statusText}`;
   }
 
-  return `Mano del jugador con ${cardCount} cartas`;
+  return `${subject} con ${cardCount} cartas`;
 }
 
 export function Hand({
@@ -172,16 +185,18 @@ export function Hand({
   isActive = false,
   hideHoleCard = false,
   showTotal = true,
+  role = 'player',
   className,
 }: HandProps): JSX.Element {
   const value = handValue(hand.cards);
   const styles = HAND_SIZE_STYLES[size];
   const status = getStatus(hand, value);
-  const statusPresentation = getStatusPresentation(status, value.total);
+  const statusPresentation = getStatusPresentation(status, value);
   const upcard = hand.cards[0];
   const visibleUpcardLabel = upcard ? getCardLabel(upcard.rank, upcard.suit) : null;
   const groupAriaLabel = getGroupAriaLabel({
     cardCount: hand.cards.length,
+    role,
     hideHoleCard,
     showTotal,
     visibleUpcardLabel,

@@ -66,7 +66,7 @@ export default function SandboxPage(): JSX.Element {
     isSurrendered: true,
   });
   const handActive = makeHand([makeCard('8', 'hearts'), makeCard('8', 'clubs')]);
-  const dealerHidden = makeHand([makeCard('10', 'spades'), makeCard('K', 'hearts')]);
+  const dealerHidden = makeHand([makeCard('6', 'diamonds'), makeCard('K', 'hearts')]);
   const handLong = makeHand([
     makeCard('2', 'clubs'),
     makeCard('3', 'diamonds'),
@@ -159,11 +159,11 @@ export default function SandboxPage(): JSX.Element {
           <div className="grid gap-8 lg:grid-cols-2">
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-300">Dealer durante playerTurn</p>
-              <Hand hand={dealerHidden} size="md" hideHoleCard showTotal={false} />
+              <Hand hand={dealerHidden} size="md" hideHoleCard showTotal={false} role="dealer" />
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-300">Dealer en resolution</p>
-              <Hand hand={dealerHidden} size="md" hideHoleCard={false} showTotal />
+              <Hand hand={dealerHidden} size="md" hideHoleCard={false} showTotal role="dealer" />
             </div>
           </div>
         </Section>

@@ -7,5 +7,6 @@ export type HandProps = Readonly<{
   isActive?: boolean;
   hideHoleCard?: boolean;
   showTotal?: boolean;
+  role?: 'player' | 'dealer';
   className?: string;
 }>;

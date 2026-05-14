@@ -20,6 +20,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#8** Store de juego — `src/store/gameStore.ts`: state machine completa del round, acciones de juego, selectores, persistencia parcial y soporte deterministic seed para tests
 - **#9** UI: componente Card — `src/components/game/Card.tsx`: carta visual presentacional con estados face-up/face-down, tamaños `sm|md|lg`, resaltado opcional y accesibilidad en español
 - **#10** UI: componente Hand — `src/components/game/Hand.tsx`: composición de múltiples `Card` con solapamiento horizontal, estado activo y badge de total (normal/soft/BJ/bust/surrender)
+- **#10b** Fix post-review de Hand — `src/lib/blackjack/hand.ts` ahora expone `hardTotal`/`softTotal`; `Hand` recibe `role` para aria-label correcto de dealer en playerTurn y resolution
 
 ## Issues abiertos en Fase 1
 
@@ -28,7 +29,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 ## Métricas actuales
 
-- **Tests:** 119 pasando en 11 archivos
+- **Tests:** 125 pasando en 11 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -74,6 +75,8 @@ Pasar los 4 antes de commit + push + close issue.
 - **Badge de total en `Hand` con `aria-live="polite"`**: anuncia cambios de total sin depender de animaciones.
 - **`hideHoleCard` no oculta total automáticamente**: el padre decide visibilidad del badge con `showTotal`.
 - **Página `/sandbox` para preview visual de componentes UI sin conectar al store**: útil para auditoría visual y deploys de validación temprana.
+- **`handValue` expone `hardTotal` y `softTotal` explícitos**: UI deja de inferir matemática de Ases; el componente `Hand` solo consume datos de dominio.
+- **`Hand` usa prop `role` (`player`/`dealer`) para accesibilidad**: el aria-label ya no depende de `hideHoleCard` para distinguir actor de la mano.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 

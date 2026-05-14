@@ -15,11 +15,14 @@ function makeShoe(ranks: ReadonlyArray<Rank>, suit: Suit = 'clubs'): Shoe {
 }
 
 function makeValue(total: number, isSoft: boolean, isBust: boolean): HandValue {
+  const hardTotal = isSoft ? total - 10 : total;
   return {
     total,
     isSoft,
     isBust,
     isBlackjack: false,
+    hardTotal,
+    softTotal: isSoft ? total : null,
   };
 }
 
@@ -80,6 +83,8 @@ describe('playDealerHand', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 21,
+      softTotal: null,
     });
   });
 
@@ -107,6 +112,8 @@ describe('playDealerHand', () => {
       isSoft: true,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 7,
+      softTotal: 17,
     });
   });
 
@@ -128,6 +135,8 @@ describe('playDealerHand', () => {
       isSoft: false,
       isBust: true,
       isBlackjack: false,
+      hardTotal: 22,
+      softTotal: null,
     });
   });
 
@@ -155,6 +164,8 @@ describe('playDealerHand', () => {
       isSoft: true,
       isBust: false,
       isBlackjack: true,
+      hardTotal: 11,
+      softTotal: 21,
     });
   });
 

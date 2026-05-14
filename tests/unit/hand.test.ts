@@ -38,6 +38,8 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 0,
+      softTotal: null,
     });
   });
 
@@ -47,6 +49,8 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 11,
+      softTotal: null,
     });
 
     expect(handValue([makeCard('10', 'spades'), makeCard('7', 'hearts')])).toEqual({
@@ -54,6 +58,8 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 17,
+      softTotal: null,
     });
 
     expect(handValue([makeCard('10', 'spades'), makeCard('K', 'hearts')])).toEqual({
@@ -61,6 +67,8 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 20,
+      softTotal: null,
     });
 
     expect(handValue([makeCard('10', 'spades'), makeCard('K', 'hearts'), makeCard('5', 'diamonds')])).toEqual(
@@ -69,30 +77,42 @@ describe('handValue', () => {
         isSoft: false,
         isBust: true,
         isBlackjack: false,
+        hardTotal: 25,
+        softTotal: null,
       },
     );
   });
 
-  it('handles soft hands correctly', () => {
-    expect(handValue([makeCard('A', 'spades'), makeCard('6', 'hearts')])).toEqual({
-      total: 17,
+  it('returns hardTotal and softTotal for [A,7]', () => {
+    expect(handValue([makeCard('A', 'spades'), makeCard('7', 'hearts')])).toEqual({
+      total: 18,
       isSoft: true,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 8,
+      softTotal: 18,
     });
+  });
 
-    expect(handValue([makeCard('A', 'spades'), makeCard('K', 'hearts')])).toEqual({
-      total: 21,
-      isSoft: true,
+  it('returns hard hand when ace cannot stay soft', () => {
+    expect(handValue([makeCard('A', 'spades'), makeCard('7', 'hearts'), makeCard('5', 'diamonds')])).toEqual({
+      total: 13,
+      isSoft: false,
       isBust: false,
-      isBlackjack: true,
+      isBlackjack: false,
+      hardTotal: 13,
+      softTotal: null,
     });
+  });
 
-    expect(handValue([makeCard('A', 'spades'), makeCard('5', 'hearts'), makeCard('5', 'diamonds')])).toEqual({
-      total: 21,
+  it('handles [A,A] and [A,A,9] correctly', () => {
+    expect(handValue([makeCard('A', 'spades'), makeCard('A', 'hearts')])).toEqual({
+      total: 12,
       isSoft: true,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 2,
+      softTotal: 12,
     });
 
     expect(handValue([makeCard('A', 'spades'), makeCard('A', 'hearts'), makeCard('9', 'diamonds')])).toEqual({
@@ -100,15 +120,19 @@ describe('handValue', () => {
       isSoft: true,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 11,
+      softTotal: 21,
     });
   });
 
-  it('handles key hard-case transitions with aces', () => {
+  it('handles key ace transitions into hard totals', () => {
     expect(handValue([makeCard('A', 'spades'), makeCard('5', 'hearts'), makeCard('6', 'diamonds')])).toEqual({
       total: 12,
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 12,
+      softTotal: null,
     });
 
     expect(handValue([makeCard('A', 'spades'), makeCard('6', 'hearts'), makeCard('J', 'diamonds')])).toEqual({
@@ -116,15 +140,19 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 17,
+      softTotal: null,
     });
   });
 
-  it('handles multiple aces using only one +10 promotion', () => {
-    expect(handValue([makeCard('A', 'spades'), makeCard('A', 'hearts')])).toEqual({
-      total: 12,
+  it('handles A+K blackjack and regular bust', () => {
+    expect(handValue([makeCard('A', 'spades'), makeCard('K', 'hearts')])).toEqual({
+      total: 21,
       isSoft: true,
       isBust: false,
-      isBlackjack: false,
+      isBlackjack: true,
+      hardTotal: 11,
+      softTotal: 21,
     });
 
     expect(handValue([makeCard('A', 'spades'), makeCard('A', 'hearts'), makeCard('A', 'diamonds')])).toEqual({
@@ -132,24 +160,21 @@ describe('handValue', () => {
       isSoft: true,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 3,
+      softTotal: 13,
     });
 
-    expect(
-      handValue([
-        makeCard('A', 'spades'),
-        makeCard('A', 'hearts'),
-        makeCard('9', 'diamonds'),
-        makeCard('10', 'clubs'),
-      ]),
-    ).toEqual({
-      total: 21,
+    expect(handValue([makeCard('10', 'spades'), makeCard('7', 'hearts'), makeCard('5', 'diamonds')])).toEqual({
+      total: 22,
       isSoft: false,
-      isBust: false,
+      isBust: true,
       isBlackjack: false,
+      hardTotal: 22,
+      softTotal: null,
     });
   });
 
-  it('distinguishes blackjack from generic 21', () => {
+  it('distinguishes blackjack from generic 21 and preserves totals', () => {
     expect(handValue([makeCard('A', 'spades'), makeCard('10', 'hearts')]).isBlackjack).toBe(true);
     expect(handValue([makeCard('A', 'spades'), makeCard('K', 'clubs')]).isBlackjack).toBe(true);
     expect(handValue([makeCard('A', 'spades'), makeCard('5', 'hearts'), makeCard('5', 'diamonds')]).isBlackjack).toBe(
@@ -160,6 +185,8 @@ describe('handValue', () => {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 21,
+      softTotal: null,
     });
   });
 });

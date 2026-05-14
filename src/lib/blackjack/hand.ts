@@ -8,6 +8,8 @@ export interface HandValue {
   isSoft: boolean;
   isBust: boolean;
   isBlackjack: boolean;
+  hardTotal: number;
+  softTotal: number | null;
 }
 
 /**
@@ -35,21 +37,24 @@ export function handValue(cards: ReadonlyArray<Card>): HandValue {
       isSoft: false,
       isBust: false,
       isBlackjack: false,
+      hardTotal: 0,
+      softTotal: null,
     };
   }
 
-  let total = 0;
+  let hardTotal = 0;
   let hasAce = false;
 
   for (const card of cards) {
-    total += cardValue(card);
+    hardTotal += cardValue(card);
     if (card.rank === 'A') {
       hasAce = true;
     }
   }
 
-  const isSoft = hasAce && total <= 11;
-  const finalTotal = isSoft ? total + 10 : total;
+  const softTotal = hasAce && hardTotal + 10 <= 21 ? hardTotal + 10 : null;
+  const finalTotal = softTotal ?? hardTotal;
+  const isSoft = softTotal !== null && finalTotal === softTotal;
   const isBust = finalTotal > 21;
   const isBlackjack = cards.length === 2 && finalTotal === 21;
 
@@ -58,6 +63,8 @@ export function handValue(cards: ReadonlyArray<Card>): HandValue {
     isSoft,
     isBust,
     isBlackjack,
+    hardTotal,
+    softTotal,
   };
 }
 
