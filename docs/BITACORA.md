@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 10/12 issues cerrados (store + componentes base de UI)
+**Progreso Fase 1:** 11/12 issues cerrados (mesa principal integrada; falta UI completa de apuesta)
 
 ## Issues cerrados
 
@@ -21,15 +21,15 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#9** UI: componente Card — `src/components/game/Card.tsx`: carta visual presentacional con estados face-up/face-down, tamaños `sm|md|lg`, resaltado opcional y accesibilidad en español
 - **#10** UI: componente Hand — `src/components/game/Hand.tsx`: composición de múltiples `Card` con solapamiento horizontal, estado activo y badge de total (normal/soft/BJ/bust/surrender)
 - **#10b** Fix post-review de Hand — `src/lib/blackjack/hand.ts` ahora expone `hardTotal`/`softTotal`; `Hand` recibe `role` para aria-label correcto de dealer en playerTurn y resolution
+- **#11** UI: mesa principal — `src/components/game/Table.tsx` + áreas dealer/jugador + controles + insurance prompt + banner de resultado + game over, todo conectado a `src/store/gameStore.ts`
 
 ## Issues abiertos en Fase 1
 
-- **#11** UI: mesa principal con dealer + jugador + controles
 - **#12** UI: pantalla de apuestas
 
 ## Métricas actuales
 
-- **Tests:** 125 pasando en 11 archivos
+- **Tests:** 136 pasando en 13 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -77,6 +77,9 @@ Pasar los 4 antes de commit + push + close issue.
 - **Página `/sandbox` para preview visual de componentes UI sin conectar al store**: útil para auditoría visual y deploys de validación temprana.
 - **`handValue` expone `hardTotal` y `softTotal` explícitos**: UI deja de inferir matemática de Ases; el componente `Hand` solo consume datos de dominio.
 - **`Hand` usa prop `role` (`player`/`dealer`) para accesibilidad**: el aria-label ya no depende de `hideHoleCard` para distinguir actor de la mano.
+- **Mesa principal en `/` como Server Component + `Table` client wrapper**: evita mismatch SSR al encapsular Zustand en componentes cliente.
+- **Hidratación controlada con `useHydratedGameStore` en `Table`**: se renderiza `TableSkeleton` hasta terminar hydration de persist para evitar inconsistencias iniciales.
+- **Mapeo explícito `PlayerHand -> HandData` en `PlayerArea`**: se eliminan campos extra (`id`, `isResolved`, `isFromSplitAces`) antes de pasar props a `Hand`, manteniendo contrato de presentación estable.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -121,14 +124,14 @@ npm test
 ```
 
 - Confirmar que estás en branch `main` y sincronizado con `origin/main`.
-- Continuar con Issue #11 (mesa principal). Pedirle al asistente
+- Continuar con Issue #12 (UI de apuestas completa). Pedirle al asistente
   el prompt detallado para este issue antes de empezar.
 
 ## Próximo paso
 
-**Issue #11 — Mesa principal.** Ensamblar dealer + jugador + controles de acción
-consumiendo store por selectores, respetando fases de UI y ocultando información
-del dealer durante `playerTurn`.
+**Issue #12 — UI de apuestas completa.** Reemplazar placeholder de "Repartir"
+por selector completo de apuesta (chips/input/validaciones) integrado con bankroll
+y fases del round.
 
 ## Lecciones aprendidas
 
@@ -166,6 +169,30 @@ del dealer durante `playerTurn`.
 - **Qué costó más de lo esperado:** Nada notable en implementación; la única fricción real es que la evaluación visual final depende de revisar en navegador real y viewport variados.
 - **Decisiones que reevaluaría:** Si el sandbox crece con más componentes, convendría mover bloques repetidos a `src/app/sandbox/_components/` para mantener `page.tsx` corto y más mantenible.
 - **Para próximos issues:** Verificar en navegador real spacing horizontal de manos largas y legibilidad de badges sobre fondos oscuros; estas sutilezas no aparecen en tests de jsdom aunque todo pase.
+
+## Deuda técnica registrada
+
+### UI / UX
+
+- **Estado "Rendido" visualmente sutil:** el badge actual usa fondo `slate-50` + cursiva + texto `slate-500`. En auditoría visual del sandbox (deploy de Vercel) se confirmó que se distingue poco del estado normal. No bloqueante para Fase 1, pero conviene revisarlo antes de Fase 2 (Tutor de estrategia básica), donde el feedback inmediato sobre decisiones del jugador es central. Opciones a evaluar: fondo naranja/amarillo apagado, icono prepended (ej. `🏳️`), peso de fuente más alto.
+- **Cartas numéricas sin pip layout:** el centro de cada carta muestra un único símbolo grande del palo en lugar del layout tradicional de pips (ej. siete corazones distribuidos para el `7♥`). Funciona para reconocimiento general pero la diferencia entre cartas numéricas depende exclusivamente de la lectura del rank en la esquina. Evaluar antes de Fase 4 (drill de conteo Hi-Lo a `0.25s/carta`) porque la velocidad de reconocimiento podría no ser suficiente con el diseño actual.
+
+### Validaciones pendientes
+
+- **Performance en móvil real:** sandbox validado solo en desktop. Probar en dispositivo físico (no DevTools responsive) antes de Issue #11.
+
+## Resultado de auditoría visual post-deploy (sandbox)
+
+**Fecha:** 14 mayo 2026  
+**URL:** [https://blackjack-trainer-two-silk.vercel.app/sandbox](https://blackjack-trainer-two-silk.vercel.app/sandbox)
+
+- Card en 3 tamaños: `✅` diferenciados, colores correctos, highlight visible.
+- Galería de ranks: `✅` los 13 ranks renderizan correctamente.
+- Estados de Hand: `✅` normal (17), soft (8/18), BJ, Bust (25 tachado + Bust), mano activa con ring `sky-400`.
+- Soft hand muestra `hardTotal/softTotal` correctamente (validación del fix #10b en producción).
+- Sección 6 (mano larga `[2♣, 3♦, 2♥, A♠, 2♣]`) muestra badge `10/20` — confirma cálculo correcto de `softTotal` en `handValue` para manos extendidas.
+- Dealer con hole card: `✅` aria-label "Mano del dealer..." en ambos casos (oculta y revelada). Bug de accesibilidad de #10b resuelto en producción.
+- Hole card: aria-label `"Carta boca abajo"`, no hay leak de palo o rank al screen reader.
 
 ## Repo
 
