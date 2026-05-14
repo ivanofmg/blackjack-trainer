@@ -142,6 +142,27 @@ describe('gameStore', () => {
     expect(state().playerHands.length).toBe(handCountAfterFirstSplit);
   });
 
+  it('mano de split-aces no permite ninguna acción adicional (incluyendo re-split)', () => {
+    setRoundShoe(makeShoe(['A', '10', 'A', '7', 'A', '9']));
+    useGameStore.getState().deal();
+    useGameStore.getState().split();
+
+    expect(state().playerHands).toHaveLength(2);
+    expect(state().playerHands.every((hand) => hand.isFromSplitAces)).toBe(true);
+    expect(state().playerHands.every((hand) => hand.isResolved)).toBe(true);
+
+    const handWithAcePair = state().playerHands.find(
+      (hand) => hand.cards.length === 2 && hand.cards[0].rank === 'A' && hand.cards[1].rank === 'A',
+    );
+    expect(handWithAcePair).toBeDefined();
+
+    expect(selectLegalActions(state())).toEqual([]);
+
+    const playerHandsBefore = state().playerHands;
+    useGameStore.getState().split();
+    expect(state().playerHands).toEqual(playerHandsBefore);
+  });
+
   it('surrender refunds half bet and resolves hand', () => {
     setRoundShoe(makeShoe(['10', '6', '7', '9', 'K']));
     useGameStore.getState().deal();
@@ -163,6 +184,39 @@ describe('gameStore', () => {
     expect(state().phase).toBe('betting');
     expect(state().bankroll).toBe(DEFAULT_BANKROLL);
     expect(state().lastRoundResult?.insurancePayout).toBe(15);
+  });
+
+  it('después de declineInsurance sin dealer blackjack, la mano sigue jugable', () => {
+    setRoundShoe(makeShoe(['10', 'A', '7', '9', '5', '6']));
+    useGameStore.getState().deal();
+
+    expect(selectShouldOfferInsurance(state())).toBe(true);
+    expect(state().phase).toBe('playerTurn');
+
+    useGameStore.getState().declineInsurance();
+
+    expect(state().phase).toBe('playerTurn');
+    expect(selectShouldOfferInsurance(state())).toBe(false);
+    expect(state().insuranceBet).toBe(0);
+
+    const legal = selectLegalActions(state());
+    expect(legal).toContain('hit');
+    expect(legal).toContain('stand');
+    expect(legal).toContain('double');
+    expect(legal).toContain('surrender');
+
+    useGameStore.getState().hit();
+    expect(state().playerHands[0].cards).toHaveLength(3);
+  });
+
+  it('blackjack mutuo resuelve como push y bankroll vuelve al inicial', () => {
+    setRoundShoe(makeShoe(['A', 'A', 'K', 'K']));
+    useGameStore.getState().deal();
+
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult?.handResults[0].resolution.outcome).toBe('push');
+    expect(state().bankroll).toBe(DEFAULT_BANKROLL);
+    expect(state().dealerHand.cards).toHaveLength(2);
   });
 
   it('pays natural blackjack at 3:2', () => {
