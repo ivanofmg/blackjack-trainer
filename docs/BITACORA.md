@@ -73,6 +73,7 @@ Pasar los 4 antes de commit + push + close issue.
 - **Solapamiento horizontal ~30% entre cartas en `Hand`**: layout en fila con margen negativo por tamaño para mantener legibilidad.
 - **Badge de total en `Hand` con `aria-live="polite"`**: anuncia cambios de total sin depender de animaciones.
 - **`hideHoleCard` no oculta total automáticamente**: el padre decide visibilidad del badge con `showTotal`.
+- **Página `/sandbox` para preview visual de componentes UI sin conectar al store**: útil para auditoría visual y deploys de validación temprana.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -155,6 +156,13 @@ del dealer durante `playerTurn`.
 - **Qué costó más de lo esperado:** Definir un `aria-label` de grupo útil en español fue más delicado de lo previsto, especialmente para distinguir contexto de dealer con hole card oculta sin filtrar información sensible del total por defecto.
 - **Decisiones que reevaluaría:** El badge de total resuelve bien estados, pero en mesas con muchas manos simultáneas podría competir visualmente con controles; en iteración futura evaluaría compactarlo a un formato más corto en `sm`.
 - **Para próximos issues:** En la mesa principal (#11), decidir explícitamente cuándo usar `hideHoleCard=true` y `showTotal=false` en dealer durante `playerTurn`; no dejar que el contenedor "adivine" estas reglas porque genera inconsistencias de información.
+
+### Sandbox visual — preview de Card y Hand
+
+- **Qué funcionó:** La ruta `/sandbox` permitió contrastar rápidamente tamaños, estados y composiciones reales (`Card` y `Hand`) sin depender de mocks del store ni montar la mesa completa.
+- **Qué costó más de lo esperado:** Nada notable en implementación; la única fricción real es que la evaluación visual final depende de revisar en navegador real y viewport variados.
+- **Decisiones que reevaluaría:** Si el sandbox crece con más componentes, convendría mover bloques repetidos a `src/app/sandbox/_components/` para mantener `page.tsx` corto y más mantenible.
+- **Para próximos issues:** Verificar en navegador real spacing horizontal de manos largas y legibilidad de badges sobre fondos oscuros; estas sutilezas no aparecen en tests de jsdom aunque todo pase.
 
 ## Repo
 
