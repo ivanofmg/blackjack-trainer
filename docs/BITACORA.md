@@ -28,7 +28,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 ## Métricas actuales
 
-- **Tests:** 91 pasando en 9 archivos
+- **Tests:** 94 pasando en 9 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -122,6 +122,12 @@ como fuente única de estado para renderizar cartas/manos en mesa.
 - **Qué costó más de lo esperado:** El flujo de `deal()` cuando el jugador tiene blackjack natural fue más delicado de lo previsto, especialmente para no forzar `playDealerHand()` innecesariamente cuando el resultado podía resolverse directo. También hubo fricción en la política de hidratación (`useHydratedGameStore`) por una regla de lint de React (`set-state-in-effect`) y en mantener transiciones automáticas coherentes entre `playerTurn -> dealerTurn -> resolution`.
 - **Decisiones que reevaluaría:** `RoundResult` quedó útil, pero podría separarse en un tipo compartido en `src/lib/` para evitar que su forma viva solo en el store. El ID con contador interno (`hand-1`, `hand-2`) funcionó para tests y round local, pero en UI compleja sería más robusto usar `crypto.randomUUID()` para evitar colisiones en escenarios de montaje/desmontaje.
 - **Para próximos issues:** En UI usar siempre `selectLegalActions()` y `selectShouldOfferInsurance()` en lugar de recalcular desde estado crudo. Evitar disparar acciones del store fuera de fase (por ejemplo llamar `hit()` en `betting`) y respetar que `phase` es la fuente de verdad del flujo. Para tests futuros, seguir inyectando shoe determinístico con `__setShoe()` y seed con `__setRngSeed()` porque redujo muchísimo la fragilidad de casos de split/insurance/BJ.
+
+### Issue #8b — Cierre de agujeros de cobertura
+- **Qué funcionó:** Los tres escenarios se pudieron expresar con el harness actual de `tests/unit/gameStore.test.ts` (`setRoundShoe`, `state`, `beforeEach(resetStore)`) sin tocar producción; eso confirma que el store ya era testeable de forma determinista.
+- **Qué costó más de lo esperado:** Nada notable. Los tres casos (push BJ mutuo, `declineInsurance` sin BJ dealer y bloqueo de re-split en split-aces) pasaron al primer intento.
+- **Decisiones que reevaluaría:** Mantener `setRoundShoe`/`__setShoe` como mecanismo de inyección para pruebas fue correcto; por ahora no cambiaría esa decisión porque evita flaky tests sin contaminar la API de runtime.
+- **Para próximos issues:** Para UI conviene cubrir primero rutas de estado no triviales con tests de store (seguros, BJ automático, split-aces) y recién después renderizar componentes; reduce muchísimo debugging visual al integrar `Issue #9` en adelante.
 
 ## Repo
 
