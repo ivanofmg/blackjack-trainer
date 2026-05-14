@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 8/12 issues cerrados (store completo + falta UI)
+**Progreso Fase 1:** 9/12 issues cerrados (store + base visual de cartas)
 
 ## Issues cerrados
 
@@ -18,17 +18,17 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#6** Dealer — `src/lib/blackjack/dealer.ts`: shouldDealerHit (S17/H17), playDealerHand
 - **#7** Resolución de pagos — `src/lib/blackjack/payout.ts`: resolveHand, resolveRound (BJ 3:2/6:5, surrender)
 - **#8** Store de juego — `src/store/gameStore.ts`: state machine completa del round, acciones de juego, selectores, persistencia parcial y soporte deterministic seed para tests
+- **#9** UI: componente Card — `src/components/game/Card.tsx`: carta visual presentacional con estados face-up/face-down, tamaños `sm|md|lg`, resaltado opcional y accesibilidad en español
 
 ## Issues abiertos en Fase 1
 
-- **#9** UI: componente Card (carta visual)
 - **#10** UI: componente Hand (mano visible)
 - **#11** UI: mesa principal con dealer + jugador + controles
 - **#12** UI: pantalla de apuestas
 
 ## Métricas actuales
 
-- **Tests:** 94 pasando en 9 archivos
+- **Tests:** 100 pasando en 10 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -65,6 +65,10 @@ Pasar los 4 antes de commit + push + close issue.
 - **Store con `persist` parcial (`bankroll`, `rules`)**: round en curso no se persiste para evitar estados inconsistentes tras reload.
 - **Persistencia centralizada en `src/lib/storage/*`** con guard SSR (`window` undefined) para Next.js.
 - **`RoundResult` en store**: guarda resoluciones por mano, neto total de la ronda e impacto de insurance para UI.
+- **Componente `Card` puramente presentacional**: sin estado interno, sin conexión a store y sin lógica de blackjack.
+- **Diseño de naipe con proporción real (2.5:3.5)**: tamaños fijos `sm` (48x67), `md` (80x112), `lg` (112x156) para consistencia visual en mesa y drill.
+- **Palos Unicode como fuente única de render (`♥ ♦ ♣ ♠`)**: evita assets externos y mantiene legibilidad/accesibilidad.
+- **Sin animaciones en `Card`**: flips y reparto quedan reservados para componentes padre (`Hand`/mesa).
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -98,37 +102,49 @@ npm run build            # Build de producción (no ejecutado aún)
 
 ## Cómo retomar en próxima sesión
 
-1. Leer `AGENTS.md`, `docs/PRD.md`, y este `BITACORA.md`.
-2. Abrir el repo en Cursor: `cursor C:\dev\blackjack-trainer`
-3. Verificar que todo sigue verde:
+- Leer `AGENTS.md`, `docs/PRD.md`, y este `BITACORA.md`.
+- Abrir el repo en Cursor: `cursor C:\dev\blackjack-trainer`
+- Verificar que todo sigue verde:
+
 ```powershell
-   git pull
-   npm install
-   npm test
+git pull
+npm install
+npm test
 ```
-4. Confirmar que estás en branch `main` y sincronizado con `origin/main`.
-5. Continuar con Issue #8 (store de Zustand). Pedirle al asistente
-   el prompt detallado para este issue antes de empezar.
+
+- Confirmar que estás en branch `main` y sincronizado con `origin/main`.
+- Continuar con Issue #10 (componente Hand). Pedirle al asistente
+  el prompt detallado para este issue antes de empezar.
 
 ## Próximo paso
 
-**Issue #9 — Componente Card.** Empezar capa UI usando el store ya cerrado
-como fuente única de estado para renderizar cartas/manos en mesa.
+**Issue #10 — Componente Hand.** Integrar múltiples `Card`, fan/stack visual
+de cartas y estados de mano (activa, stand, bust, blackjack) sin romper separación
+entre UI y lógica de dominio.
 
 ## Lecciones aprendidas
 
 ### Issue #8 — Store de Zustand
+
 - **Qué funcionó:** Delegar todo el cálculo a `src/lib/blackjack/*` evitó duplicar reglas en el store; en `src/store/gameStore.ts` quedó claro qué era orquestación de fases y qué era matemática (`legalActions`, `playDealerHand`, `resolveRound`). También funcionó bien exponer selectores (`selectLegalActions`, `selectActiveHand`, `selectDealerUpcard`) para no meter lógica de negocio en componentes.
 - **Qué costó más de lo esperado:** El flujo de `deal()` cuando el jugador tiene blackjack natural fue más delicado de lo previsto, especialmente para no forzar `playDealerHand()` innecesariamente cuando el resultado podía resolverse directo. También hubo fricción en la política de hidratación (`useHydratedGameStore`) por una regla de lint de React (`set-state-in-effect`) y en mantener transiciones automáticas coherentes entre `playerTurn -> dealerTurn -> resolution`.
 - **Decisiones que reevaluaría:** `RoundResult` quedó útil, pero podría separarse en un tipo compartido en `src/lib/` para evitar que su forma viva solo en el store. El ID con contador interno (`hand-1`, `hand-2`) funcionó para tests y round local, pero en UI compleja sería más robusto usar `crypto.randomUUID()` para evitar colisiones en escenarios de montaje/desmontaje.
 - **Para próximos issues:** En UI usar siempre `selectLegalActions()` y `selectShouldOfferInsurance()` en lugar de recalcular desde estado crudo. Evitar disparar acciones del store fuera de fase (por ejemplo llamar `hit()` en `betting`) y respetar que `phase` es la fuente de verdad del flujo. Para tests futuros, seguir inyectando shoe determinístico con `__setShoe()` y seed con `__setRngSeed()` porque redujo muchísimo la fragilidad de casos de split/insurance/BJ.
 
 ### Issue #8b — Cierre de agujeros de cobertura
+
 - **Qué funcionó:** Los tres escenarios se pudieron expresar con el harness actual de `tests/unit/gameStore.test.ts` (`setRoundShoe`, `state`, `beforeEach(resetStore)`) sin tocar producción; eso confirma que el store ya era testeable de forma determinista.
 - **Qué costó más de lo esperado:** Nada notable. Los tres casos (push BJ mutuo, `declineInsurance` sin BJ dealer y bloqueo de re-split en split-aces) pasaron al primer intento.
 - **Decisiones que reevaluaría:** Mantener `setRoundShoe`/`__setShoe` como mecanismo de inyección para pruebas fue correcto; por ahora no cambiaría esa decisión porque evita flaky tests sin contaminar la API de runtime.
 - **Para próximos issues:** Para UI conviene cubrir primero rutas de estado no triviales con tests de store (seguros, BJ automático, split-aces) y recién después renderizar componentes; reduce muchísimo debugging visual al integrar `Issue #9` en adelante.
 
+### Issue #9 — Componente Card
+
+- **Qué funcionó:** Separar `CardProps` en `Card.types.ts` evitó fricción de nombres con el tipo de dominio (`Card` vs `CardData`) y dejó clara la frontera entre contrato visual y modelo de blackjack.
+- **Qué costó más de lo esperado:** Ajustar tamaños exactos de naipe real (`48x67`, `80x112`, `112x156`) sin romper legibilidad de esquinas obligó a escalar tipografía/padding por tamaño; un único set de clases no funcionaba bien en los tres casos.
+- **Decisiones que reevaluaría:** El símbolo central del palo en face-up aporta balance visual, pero en `sm` podría competir con el contenido de esquinas; para iteración futura evaluaría reducirlo un paso o hacerlo opcional por contexto.
+- **Para próximos issues:** En `Hand` conviene definir una estrategia de `size` consistente (prop único heredado o context visual) para que dealer/jugador/historial no mezclen escalas arbitrarias al componer varias cartas.
+
 ## Repo
 
-https://github.com/ivanofmg/blackjack-trainer
+[https://github.com/ivanofmg/blackjack-trainer](https://github.com/ivanofmg/blackjack-trainer)
