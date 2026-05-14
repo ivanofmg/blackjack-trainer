@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 7/12 issues cerrados (lógica de negocio completa, falta store + UI)
+**Progreso Fase 1:** 8/12 issues cerrados (store completo + falta UI)
 
 ## Issues cerrados
 
@@ -17,10 +17,10 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#5** Acciones legales — `src/lib/blackjack/actions.ts`: legalActions con DAS, split-aces lockdown, insurance
 - **#6** Dealer — `src/lib/blackjack/dealer.ts`: shouldDealerHit (S17/H17), playDealerHand
 - **#7** Resolución de pagos — `src/lib/blackjack/payout.ts`: resolveHand, resolveRound (BJ 3:2/6:5, surrender)
+- **#8** Store de juego — `src/store/gameStore.ts`: state machine completa del round, acciones de juego, selectores, persistencia parcial y soporte deterministic seed para tests
 
 ## Issues abiertos en Fase 1
 
-- **#8** Estado: store de Zustand para el juego (siguiente, el más complejo)
 - **#9** UI: componente Card (carta visual)
 - **#10** UI: componente Hand (mano visible)
 - **#11** UI: mesa principal con dealer + jugador + controles
@@ -28,8 +28,8 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 ## Métricas actuales
 
-- **Tests:** 68 pasando en 7 archivos
-- **Coverage:** 100% en statements/branches/functions/lines para todos los archivos de `src/lib/blackjack/*`
+- **Tests:** 91 pasando en 9 archivos
+- **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
 
@@ -62,6 +62,9 @@ Pasar los 4 antes de commit + push + close issue.
 - **`canSplitByValue` vs `isPair`**: split por valor (10-J cuenta) según regla común Strip; isPair es por rank exacto.
 - **`isFromSplitAces`**: contexto que bloquea hit/double/split en manos de split-aces (solo 1 carta, solo stand).
 - **`utils.ts` (helper shadcn `cn()`) excluido de coverage**: no es lógica de negocio.
+- **Store con `persist` parcial (`bankroll`, `rules`)**: round en curso no se persiste para evitar estados inconsistentes tras reload.
+- **Persistencia centralizada en `src/lib/storage/*`** con guard SSR (`window` undefined) para Next.js.
+- **`RoundResult` en store**: guarda resoluciones por mano, neto total de la ronda e impacto de insurance para UI.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -109,11 +112,8 @@ npm run build            # Build de producción (no ejecutado aún)
 
 ## Próximo paso
 
-**Issue #8 — Store de Zustand.** Este conecta toda la lógica de negocio
-en un solo estado reactivo. Será el más complejo de Fase 1 porque
-maneja el ciclo de vida completo del round: betting → dealing →
-playerTurn (con manos múltiples por split) → dealerTurn → resolution.
-Pedir al asistente el prompt detallado al inicio de la próxima sesión.
+**Issue #9 — Componente Card.** Empezar capa UI usando el store ya cerrado
+como fuente única de estado para renderizar cartas/manos en mesa.
 
 ## Repo
 
