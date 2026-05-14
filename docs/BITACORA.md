@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 9/12 issues cerrados (store + base visual de cartas)
+**Progreso Fase 1:** 10/12 issues cerrados (store + componentes base de UI)
 
 ## Issues cerrados
 
@@ -19,16 +19,16 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#7** Resolución de pagos — `src/lib/blackjack/payout.ts`: resolveHand, resolveRound (BJ 3:2/6:5, surrender)
 - **#8** Store de juego — `src/store/gameStore.ts`: state machine completa del round, acciones de juego, selectores, persistencia parcial y soporte deterministic seed para tests
 - **#9** UI: componente Card — `src/components/game/Card.tsx`: carta visual presentacional con estados face-up/face-down, tamaños `sm|md|lg`, resaltado opcional y accesibilidad en español
+- **#10** UI: componente Hand — `src/components/game/Hand.tsx`: composición de múltiples `Card` con solapamiento horizontal, estado activo y badge de total (normal/soft/BJ/bust/surrender)
 
 ## Issues abiertos en Fase 1
 
-- **#10** UI: componente Hand (mano visible)
 - **#11** UI: mesa principal con dealer + jugador + controles
 - **#12** UI: pantalla de apuestas
 
 ## Métricas actuales
 
-- **Tests:** 100 pasando en 10 archivos
+- **Tests:** 119 pasando en 11 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -69,6 +69,10 @@ Pasar los 4 antes de commit + push + close issue.
 - **Diseño de naipe con proporción real (2.5:3.5)**: tamaños fijos `sm` (48x67), `md` (80x112), `lg` (112x156) para consistencia visual en mesa y drill.
 - **Palos Unicode como fuente única de render (`♥ ♦ ♣ ♠`)**: evita assets externos y mantiene legibilidad/accesibilidad.
 - **Sin animaciones en `Card`**: flips y reparto quedan reservados para componentes padre (`Hand`/mesa).
+- **Propagación de `size` por props explícitos (no Context)**: decisión vigente para toda la capa UI (`Mesa -> Area -> Hand -> Card`).
+- **Solapamiento horizontal ~30% entre cartas en `Hand`**: layout en fila con margen negativo por tamaño para mantener legibilidad.
+- **Badge de total en `Hand` con `aria-live="polite"`**: anuncia cambios de total sin depender de animaciones.
+- **`hideHoleCard` no oculta total automáticamente**: el padre decide visibilidad del badge con `showTotal`.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -113,14 +117,14 @@ npm test
 ```
 
 - Confirmar que estás en branch `main` y sincronizado con `origin/main`.
-- Continuar con Issue #10 (componente Hand). Pedirle al asistente
+- Continuar con Issue #11 (mesa principal). Pedirle al asistente
   el prompt detallado para este issue antes de empezar.
 
 ## Próximo paso
 
-**Issue #10 — Componente Hand.** Integrar múltiples `Card`, fan/stack visual
-de cartas y estados de mano (activa, stand, bust, blackjack) sin romper separación
-entre UI y lógica de dominio.
+**Issue #11 — Mesa principal.** Ensamblar dealer + jugador + controles de acción
+consumiendo store por selectores, respetando fases de UI y ocultando información
+del dealer durante `playerTurn`.
 
 ## Lecciones aprendidas
 
@@ -144,6 +148,13 @@ entre UI y lógica de dominio.
 - **Qué costó más de lo esperado:** Ajustar tamaños exactos de naipe real (`48x67`, `80x112`, `112x156`) sin romper legibilidad de esquinas obligó a escalar tipografía/padding por tamaño; un único set de clases no funcionaba bien en los tres casos.
 - **Decisiones que reevaluaría:** El símbolo central del palo en face-up aporta balance visual, pero en `sm` podría competir con el contenido de esquinas; para iteración futura evaluaría reducirlo un paso o hacerlo opcional por contexto.
 - **Para próximos issues:** En `Hand` conviene definir una estrategia de `size` consistente (prop único heredado o context visual) para que dealer/jugador/historial no mezclen escalas arbitrarias al componer varias cartas.
+
+### Issue #10 — Componente Hand
+
+- **Qué funcionó:** Reutilizar `Card` sin estado y propagar `size` por props explícitos permitió mantener una composición limpia y predecible; el test de propagación evitó romper esta decisión arquitectónica al primer refactor.
+- **Qué costó más de lo esperado:** Definir un `aria-label` de grupo útil en español fue más delicado de lo previsto, especialmente para distinguir contexto de dealer con hole card oculta sin filtrar información sensible del total por defecto.
+- **Decisiones que reevaluaría:** El badge de total resuelve bien estados, pero en mesas con muchas manos simultáneas podría competir visualmente con controles; en iteración futura evaluaría compactarlo a un formato más corto en `sm`.
+- **Para próximos issues:** En la mesa principal (#11), decidir explícitamente cuándo usar `hideHoleCard=true` y `showTotal=false` en dealer durante `playerTurn`; no dejar que el contenedor "adivine" estas reglas porque genera inconsistencias de información.
 
 ## Repo
 
