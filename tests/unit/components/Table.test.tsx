@@ -215,6 +215,38 @@ describe('Table', () => {
     expect(useGameStore.getState().lastRoundResult).not.toBeNull();
   });
 
+  it('runs short dealer rhythm for natural blackjack without drawing cards', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', 'K', '5', 'A']));
+    const drawSpy = vi.spyOn(useGameStore.getState(), 'dealerDrawNext');
+    render(<Table />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
+    await screen.findByRole('button', { name: 'Stand' });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Stand' }));
+
+    expect(useGameStore.getState().phase).toBe('dealerTurn');
+    expect(useGameStore.getState().isHoleCardRevealed).toBe(false);
+    expect(useGameStore.getState().pendingDealerSteps).toEqual([]);
+    expect(useGameStore.getState().lastRoundResult).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(useGameStore.getState().isHoleCardRevealed).toBe(true);
+    expect(drawSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    expect(useGameStore.getState().phase).toBe('betting');
+    expect(useGameStore.getState().lastRoundResult).not.toBeNull();
+    expect(drawSpy).not.toHaveBeenCalled();
+
+    drawSpy.mockRestore();
+  });
+
   it('cancels pending dealer timers when table unmounts', async () => {
     useGameStore.getState().__setShoe(makeShoe(['10', '6', '7', '9', '5']));
     const { unmount } = render(<Table />);

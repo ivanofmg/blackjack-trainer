@@ -207,6 +207,11 @@ describe('gameStore', () => {
 
     useGameStore.getState().takeInsurance();
 
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().pendingDealerSteps).toEqual([]);
+    expect(state().lastRoundResult).toBeNull();
+
+    advanceDealerTurn();
     expect(state().phase).toBe('betting');
     expect(state().bankroll).toBe(DEFAULT_BANKROLL);
     expect(state().lastRoundResult?.insurancePayout).toBe(15);
@@ -506,7 +511,40 @@ describe('gameStore', () => {
     useGameStore.getState().deal();
     useGameStore.getState().declineInsurance();
 
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().pendingDealerSteps).toEqual([]);
+    expect(state().lastRoundResult).toBeNull();
+
+    advanceDealerTurn();
     expect(state().phase).toBe('betting');
     expect(state().lastRoundResult?.dealerPlayed).toBe(false);
+  });
+
+  it('dealer blackjack with non-blackjack player enters dealerTurn with zero steps', () => {
+    setRoundShoe(makeShoe(['10', 'K', '5', 'A']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().pendingDealerSteps).toEqual([]);
+    expect(state().lastRoundResult).toBeNull();
+  });
+
+  it('dealer blackjack still resolves immediately when all players are bust', () => {
+    setRoundShoe(makeShoe(['10', 'K', '9', 'A', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().hit();
+
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult).not.toBeNull();
+  });
+
+  it('dealer normal flow with live player keeps dealerTurn and queued steps', () => {
+    setRoundShoe(makeShoe(['10', '6', '8', '6', '3', '2']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+
+    expect(state().phase).toBe('dealerTurn');
+    expect(state().pendingDealerSteps.length).toBeGreaterThan(0);
   });
 });

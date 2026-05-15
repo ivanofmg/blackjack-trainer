@@ -595,11 +595,21 @@ export const useGameStore = create<GameStore>()(
         }
 
         const dealerValue = handValue(state.dealerHand.cards);
-        const shouldPlayDealer = state.playerHands.some((hand) => !hand.isSurrendered && !handValue(hand.cards).isBust);
+        const someoneNeedsDealer = state.playerHands.some(
+          (hand) => !hand.isSurrendered && !handValue(hand.cards).isBust,
+        );
 
-        if (!shouldPlayDealer || dealerValue.isBlackjack) {
+        if (!someoneNeedsDealer) {
           set({ phase: 'resolution' });
           get().resolveRound();
+          return;
+        }
+
+        if (dealerValue.isBlackjack) {
+          set({
+            pendingDealerSteps: [],
+            isHoleCardRevealed: false,
+          });
           return;
         }
 

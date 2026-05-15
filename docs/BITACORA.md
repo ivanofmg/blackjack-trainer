@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 12/12 issues cerrados + sub-issues de pulido visual (#11b, #11c)
+**Progreso Fase 1:** 12/12 issues cerrados + sub-issues de pulido visual (#11b, #11c, #11d)
 
 ## Issues cerrados
 
@@ -24,6 +24,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#11** UI: mesa principal — `src/components/game/Table.tsx` + áreas dealer/jugador + controles + insurance prompt + banner de resultado + game over, todo conectado a `src/store/gameStore.ts`
 - **#11b** Fix post-auditoría visual de mesa — ritmo visible en `dealerTurn` con orquestación de delays en UI, store granular (`revealHoleCard`, `dealerDrawNext`, `finishDealerTurn`) y `RoundResultBanner` reforzado con jerarquía visual + delay de lectura antes de `nextRound`
 - **#11c** Fix persistencia visual post-round — `nextRound()` ya no limpia manos, `DealerArea` renderiza cartas siempre que existan y `RoundResultBanner` comunica explícitamente cuándo el dealer no jugó
+- **#11d** Fix ritmo corto para BJ natural del dealer — `playDealer()` diferencia “nadie necesita dealer” (cascadeo directo) de “dealer BJ con jugador vivo” (reveal + finish con orquestador, sin draws)
 
 ## Issues abiertos en Fase 1
 
@@ -31,7 +32,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 ## Métricas actuales
 
-- **Tests:** 136 pasando en 13 archivos
+- **Tests:** 169 pasando en 14 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -87,6 +88,7 @@ Pasar los 4 antes de commit + push + close issue.
 - **Acciones granulares de dealer en store**: `revealHoleCard`, `dealerDrawNext`, `finishDealerTurn` mantienen estado real en sync con lo que ve el usuario (sin delays en store).
 - **`nextRound()` solo limpia `lastRoundResult`**: las cartas del round persisten visibles en mesa hasta el próximo `deal()`, que reemplaza por completo dealer/player hands y resetea campos transitorios del round.
 - **`RoundResult` incluye `dealerPlayed: boolean`**: el banner distingue entre “dealer resolvió su turno” y “dealer no jugó” (bust/surrender/all resolved early).
+- **`playDealer()` ahora distingue 3 rutas**: (1) cascadeo directo si no hay manos vivas, (2) ritmo corto si dealer tiene BJ natural con jugador vivo (`pendingDealerSteps=[]`), (3) ritmo normal cuando el dealer debe pedir cartas.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -199,6 +201,31 @@ Esto es coherente con la decisión arquitectónica original (#8): el round en cu
 **Justificación de no arreglarlo ahora:** la mayoría de apps de casino online se comportan igual. F5 durante una mano es responsabilidad del usuario.
 
 **Si se decide cambiar:** la opción más simple es persistir `roundStartBankroll` y, al detectar al cargar que había un round en curso (presencia de cartas en `playerHands`), restituir el bet al bankroll antes de inicializar como `betting`. Esto trata el round abandonado como "nunca pasó". Cambio estimado: ~30 líneas, riesgo bajo si se hace con tests.
+
+## Ideas para Fase 4 (conteo)
+
+### Contador Hi-Lo con modos de visibilidad
+
+Cuando se implemente el contador, soportar 3 modos:
+
+- **Siempre visible:** entrenamiento inicial.
+- **Oculto + hover/tap para revelar:** el usuario lleva cuenta mental y revela para verificar. Modo intermedio entre entrenamiento y examen.
+- **Siempre oculto + quiz al final del shoe:** modo examen puro.
+
+Selector en Ajustes para elegir el modo.
+
+### Probabilidades de la próxima carta
+
+Calcular y mostrar (en el drawer de auditoría, tab dedicado):
+
+- Distribución de cartas restantes en el shoe (qué quedó después de descartes).
+- Probabilidades por rango Hi-Lo: P(carta baja 2-6), P(carta neutra 7-9), P(carta alta 10-A).
+- Top 3 cartas más probables para próxima saca del dealer.
+- Top 3 cartas más probables para próxima saca del jugador.
+
+Pedagógicamente útil para calibrar intuición sin contar carta por carta.
+
+Encaja en el drawer de auditoría planificado (Issue #15) como tab adicional junto a "Cartas jugadas" e "Historial de manos".
 
 ## Resultado de auditoría visual post-deploy (sandbox)
 
