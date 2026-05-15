@@ -186,6 +186,13 @@ interface GameStoreActions {
 
 export type GameStore = GameStoreState & GameStoreActions;
 
+export type DecisionContext = Readonly<{
+  playerHand: PlayerHand;
+  dealerUpcard: Card;
+  legalActions: ReadonlyArray<Action>;
+  rules: RulesConfig;
+}>;
+
 function getActiveHand(state: GameStoreState): PlayerHand | null {
   return state.playerHands[state.activeHandIndex] ?? null;
 }
@@ -817,6 +824,25 @@ export const selectActiveHand = (state: GameStoreState): PlayerHand | null => ge
 export const selectDealerUpcard = (state: GameStoreState): Card | null => state.dealerHand.cards[0] ?? null;
 
 export const selectLegalActions = (state: GameStoreState): Action[] => [...getLegalActionsForState(state)];
+
+export const selectDecisionContext = (state: GameStoreState): DecisionContext | null => {
+  if (state.phase !== 'playerTurn' || state.isInsuranceOffered) {
+    return null;
+  }
+
+  const playerHand = getActiveHand(state);
+  const dealerUpcard = state.dealerHand.cards[0];
+  if (!playerHand || !dealerUpcard) {
+    return null;
+  }
+
+  return {
+    playerHand,
+    dealerUpcard,
+    legalActions: getLegalActionsForState(state),
+    rules: state.rules,
+  };
+};
 
 export const selectCanDoubleDown = (state: GameStoreState): boolean => selectLegalActions(state).includes('double');
 

@@ -31,10 +31,14 @@ type MockRoundResult = Readonly<{
 type MockState = Readonly<{
   lastRoundResult: MockRoundResult | null;
   bankroll: number;
+  currentBet: number;
   nextRound: () => void;
+  deal: () => void;
 }>;
 
 const nextRoundSpy = vi.fn();
+const dealSpy = vi.fn();
+const clearRoundSpy = vi.fn();
 
 const singleHandBase: MockRoundResult = {
   handResults: [
@@ -60,20 +64,50 @@ const singleHandBase: MockRoundResult = {
 let mockState: MockState = {
   lastRoundResult: singleHandBase,
   bankroll: 1000,
+  currentBet: 10,
   nextRound: nextRoundSpy,
+  deal: dealSpy,
+};
+
+let trainerState: Readonly<{
+  mode: 'off' | 'tutor' | 'exam';
+  currentRoundDecisions: ReadonlyArray<{
+    handDescription: string;
+    chosenAction: 'hit' | 'stand' | 'double' | 'split' | 'surrender' | 'insurance';
+    recommendedAction: 'hit' | 'stand' | 'double' | 'split' | 'surrender' | 'insurance';
+    wasCorrect: boolean;
+  }>;
+  clearCurrentRoundDecisions: () => void;
+}> = {
+  mode: 'off',
+  currentRoundDecisions: [],
+  clearCurrentRoundDecisions: clearRoundSpy,
 };
 
 vi.mock('@/store/gameStore', () => ({
   useGameStore: (selector: (state: MockState) => unknown) => selector(mockState),
 }));
 
+vi.mock('@/store/trainerStore', () => ({
+  useTrainerStore: (selector: (state: typeof trainerState) => unknown) => selector(trainerState),
+}));
+
 describe('RoundResultBanner', () => {
   beforeEach(() => {
     nextRoundSpy.mockReset();
+    dealSpy.mockReset();
+    clearRoundSpy.mockReset();
     mockState = {
       lastRoundResult: singleHandBase,
       bankroll: 1000,
+      currentBet: 10,
       nextRound: nextRoundSpy,
+      deal: dealSpy,
+    };
+    trainerState = {
+      mode: 'off',
+      currentRoundDecisions: [],
+      clearCurrentRoundDecisions: clearRoundSpy,
     };
   });
 
@@ -137,6 +171,22 @@ describe('RoundResultBanner', () => {
     });
     fireEvent.click(button);
     expect(nextRoundSpy).toHaveBeenCalledTimes(1);
+    expect(dealSpy).toHaveBeenCalledTimes(1);
+    expect(clearRoundSpy).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('calls only nextRound when clicking "Cambiar apuesta"', async () => {
+    vi.useFakeTimers();
+    render(<RoundResultBanner />);
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar apuesta' }));
+    expect(nextRoundSpy).toHaveBeenCalledTimes(1);
+    expect(dealSpy).not.toHaveBeenCalled();
+    expect(clearRoundSpy).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 
@@ -204,5 +254,49 @@ describe('RoundResultBanner', () => {
 
     render(<RoundResultBanner />);
     expect(screen.getByText('Dealer no jugó')).toBeInTheDocument();
+  });
+
+  it('shows disabled auto-deal message when current bet exceeds bankroll', async () => {
+    vi.useFakeTimers();
+    mockState = {
+      ...mockState,
+      bankroll: 5,
+      currentBet: 10,
+    };
+    render(<RoundResultBanner />);
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+
+    const button = screen.getByRole('button', { name: /Apuesta excede bankroll/ });
+    expect(button).toBeDisabled();
+    expect(screen.getByText('Apuesta actual:')).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('renders round decision summary when trainer mode is active', () => {
+    trainerState = {
+      mode: 'exam',
+      currentRoundDecisions: [
+        {
+          handDescription: 'Hard 16 vs 10',
+          chosenAction: 'hit',
+          recommendedAction: 'hit',
+          wasCorrect: true,
+        },
+        {
+          handDescription: 'Soft 18 vs 3',
+          chosenAction: 'stand',
+          recommendedAction: 'double',
+          wasCorrect: false,
+        },
+      ],
+      clearCurrentRoundDecisions: clearRoundSpy,
+    };
+
+    render(<RoundResultBanner />);
+    expect(screen.getByText('Decisiones de este round:')).toBeInTheDocument();
+    expect(screen.getByText(/✓ Hit/)).toBeInTheDocument();
+    expect(screen.getByText(/✗ Stand/)).toBeInTheDocument();
   });
 });

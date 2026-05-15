@@ -13,6 +13,10 @@ import { InsurancePrompt } from './InsurancePrompt';
 import { PlayerArea } from './PlayerArea';
 import { RoundResultBanner } from './RoundResultBanner';
 import { type TableHandSize } from './Table.types';
+import { TrainerStats } from '@/components/trainer/TrainerStats';
+import { TutorBadge } from '@/components/trainer/TutorBadge';
+import { TutorHint } from '@/components/trainer/TutorHint';
+import { TutorModeToggle } from '@/components/trainer/TutorModeToggle';
 
 const DEALER_RHYTHM = {
   beforeReveal: 600,
@@ -138,9 +142,15 @@ export function Table(): JSX.Element {
     <main className="min-h-screen bg-emerald-900 p-6 md:p-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <BankrollDisplay />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-800/40 bg-emerald-950/45 px-4 py-3">
+          <TutorModeToggle />
+          <TrainerStats />
+        </div>
         <DealerArea size={handSize} />
         <PlayerArea size={handSize} />
+        <TutorBadge />
 
+        {phase === 'playerTurn' && !shouldOfferInsurance ? <TutorHint /> : null}
         {phase === 'playerTurn' && !shouldOfferInsurance ? <ActionControls /> : null}
         {phase === 'playerTurn' && shouldOfferInsurance ? <InsurancePrompt /> : null}
         {showRoundResultBanner ? <RoundResultBanner /> : null}

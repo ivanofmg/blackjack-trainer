@@ -3,7 +3,8 @@
 import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { selectLegalActions, useGameStore } from '@/store/gameStore';
+import { selectDecisionContext, selectLegalActions, useGameStore } from '@/store/gameStore';
+import { useTrainerStore } from '@/store/trainerStore';
 
 import type { ActionButtonConfig } from './Table.types';
 
@@ -22,6 +23,9 @@ export function ActionControls(): JSX.Element | null {
   const double = useGameStore((state) => state.double);
   const split = useGameStore((state) => state.split);
   const surrender = useGameStore((state) => state.surrender);
+  const gameState = useGameStore((state) => state);
+  const trainerMode = useTrainerStore((state) => state.mode);
+  const recordDecision = useTrainerStore((state) => state.recordDecision);
   const canHit = useGameStore((state) => selectLegalActions(state).includes('hit'));
   const canStand = useGameStore((state) => selectLegalActions(state).includes('stand'));
   const canDouble = useGameStore((state) => selectLegalActions(state).includes('double'));
@@ -32,12 +36,28 @@ export function ActionControls(): JSX.Element | null {
     return null;
   }
 
+  const withTutorTracking = (chosenAction: ActionButtonConfig['action'], handler: () => void): (() => void) => {
+    return () => {
+      const decisionContext = selectDecisionContext(gameState);
+      if (trainerMode !== 'off' && decisionContext !== null) {
+        recordDecision({
+          playerHand: decisionContext.playerHand,
+          dealerUpcard: decisionContext.dealerUpcard,
+          legalActions: decisionContext.legalActions,
+          chosenAction,
+          rules: decisionContext.rules,
+        });
+      }
+      handler();
+    };
+  };
+
   const handlers: Record<ActionButtonConfig['action'], () => void> = {
-    hit,
-    stand,
-    double,
-    split,
-    surrender,
+    hit: withTutorTracking('hit', hit),
+    stand: withTutorTracking('stand', stand),
+    double: withTutorTracking('double', double),
+    split: withTutorTracking('split', split),
+    surrender: withTutorTracking('surrender', surrender),
   };
   const enabledByAction: Record<ActionButtonConfig['action'], boolean> = {
     hit: canHit,

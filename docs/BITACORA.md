@@ -7,7 +7,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 2 — Tutor de estrategia básica
 **Progreso Fase 1:** COMPLETADA ✅ (12 issues principales + 4 sub-issues de refinamiento)
-**Progreso Fase 2:** 0/N issues (arranca con #13)
+**Progreso Fase 2:** 1/N issues (#13 cerrado)
 
 ## Hitos cerrados
 
@@ -24,14 +24,20 @@ Sub-issues de refinamiento (4):
 
 **Resultado de Fase 1:** mesa funcional jugable end-to-end con todas las reglas correctas, persistencia de bankroll/rules/bet, ritmo visible del dealer, banner pedagógico, sandbox de componentes validado en producción, deploy en Vercel.
 
+## Fase 2 — En curso
+
+Issues cerrados:
+
+- **#13:** Tutor de estrategia básica (S17/DAS/LS) + auto-deal entre manos.
+
 ## Métricas al cierre de Fase 1
 
 - **Tests:** 183 pasando en 16 archivos
 - **Coverage:** global > 90%, `src/lib/blackjack/*` 100%, `src/lib/storage/*` cubierto
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
-- **Deploy:** https://blackjack-trainer-two-silk.vercel.app/
-- **Sandbox visual:** https://blackjack-trainer-two-silk.vercel.app/sandbox
+- **Deploy:** [https://blackjack-trainer-two-silk.vercel.app/](https://blackjack-trainer-two-silk.vercel.app/)
+- **Sandbox visual:** [https://blackjack-trainer-two-silk.vercel.app/sandbox](https://blackjack-trainer-two-silk.vercel.app/sandbox)
 
 ## Cómo retomar en próxima sesión
 
@@ -45,11 +51,10 @@ npm install
 npm test
 ```
 
-Deberías ver 183 tests pasando y `main` sincronizado con `origin/main`.
+Deberías ver 231 tests pasando y `main` sincronizado con `origin/main`.
 
-4. Próximo issue: **#13 — Tutor de estrategia básica + auto-deal**.
-   El prompt detallado está disponible en el chat anterior (sesión cerrada al fin de Fase 1).
-   Si no se conserva el chat, pedir al asistente regenerar el prompt referenciando:
+1. Próximo issue: **#14 — Vista de matriz de estrategia consultable**.
+   Si no se conserva el contexto, pedir al asistente regenerar el prompt referenciando:
    - PRD sección 4.2 (Fase 2 — Tutor de estrategia básica)
    - PRD sección 9 (métricas: <50ms respuesta del tutor)
    - Bloque "Auto-deal entre manos" en este archivo (ya implementado como decisión técnica)
@@ -70,7 +75,13 @@ Deberías ver 183 tests pasando y `main` sincronizado con `origin/main`.
 - `RoundResult.dealerPlayed: boolean` para comunicar "Dealer no jugó" cuando aplica (#11c).
 - `playDealer` con 3 rutas: cascadeo directo (nadie vivo), ritmo corto (dealer BJ con jugador vivo), ritmo normal (#11d).
 - `currentBet` persistido en localStorage (#12). `BetSelector` con presets + input + validación.
-- **Auto-deal entre manos:** botón "Siguiente mano" en banner ejecuta `nextRound()` + `deal()` en cascada. Botón secundario "Cambiar apuesta" solo `nextRound()`. (Pendiente de implementar en #13 junto al Tutor.)
+- **Auto-deal entre manos:** botón principal "Siguiente mano" ejecuta `nextRound()` + `deal()` con `currentBet` persistido. Botón secundario "Cambiar apuesta" hace solo `nextRound()`. **Implementado en #13**.
+- **Estrategia básica:** tablas S17/DAS/LS en `src/lib/strategy/basicStrategy.ts`, con notación `Dh/Ds/P/Ph/Ps/Rh/Rs/Rp` para resolver fallbacks limpios según acciones legales.
+- **Separación de stores:** `trainerStore` separado de `gameStore` para aislar feedback pedagógico de la lógica de mesa.
+- **Timing de tracking:** captura de decisión antes de ejecutar la acción de `gameStore` (crítico para no registrar estado mutado).
+- **Pares de valor 10:** manos 10/J, J/Q, etc. se categorizan como `'TT'` y siguen la tabla de pares (stand), consistente con `canSplitByValue`.
+- **Histórico de errores:** `stats.mistakes` guarda todos los errores históricos; `topMistakes()` es solo selector top 5.
+- **Estado efímero de round:** `currentRoundDecisions` y `lastDecision` no se persisten; se limpian con `clearCurrentRoundDecisions` al avanzar de mano.
 
 ## Deuda técnica registrada
 
@@ -106,30 +117,6 @@ El ritmo corto del dealer turn (caso de BJ natural, ~1s total) implementado en #
 - Rapido: reveal `300ms`, between `250ms`, finish `200ms`.
 
 Default recomendado: **Medio**. El preset Lento ayuda especialmente para principiantes en Fase 2 (Tutor).
-
-## Ideas para Fase 2 (Tutor)
-
-### Auto-deal entre manos para acelerar volumen de práctica
-
-**Problema:** El ciclo actual requiere 2 clicks entre manos (`Siguiente mano` + `Repartir`). En 500 manos eso son 1000 clicks innecesarios. Para un trainer donde el volumen es central, esto es fricción significativa.
-
-**Propuesta — Opción híbrida:**
-
-El `RoundResultBanner` ofrece dos acciones:
-
-- **Botón principal "Siguiente mano":** ejecuta `nextRound()` + `deal()` en cascada con el `currentBet` persistido. Cero pasos extra.
-- **Botón secundario "Cambiar apuesta":** solo `nextRound()`. El usuario vuelve a la pantalla con `BetSelector` para ajustar antes de repartir.
-
-**Edge cases:**
-
-- Si `currentBet > bankroll` (después de pérdidas), el botón principal queda deshabilitado y se fuerza el flujo "Cambiar apuesta". El usuario decide conscientemente.
-- Si bankroll = 0 tras la mano, mostrar "Reiniciar bankroll" como hoy.
-
-**Decisión rechazada — Timer/auto-deal automático:** considerado pero descartado. Crea presión temporal artificial, mala UX para un trainer donde el ritmo lo decide el aprendiz.
-
-**Cuándo:** Inicio de Fase 2, junto con el primer issue del Tutor (que también modifica el banner para feedback de decisión). Implementar ambos cambios juntos evita re-tocar `RoundResultBanner` dos veces.
-
-**Esfuerzo estimado:** 50-80 líneas + tests. Cambio bien aislado.
 
 ## Ideas para Fase 4 (conteo)
 
@@ -172,3 +159,15 @@ Encaja en el drawer de auditoría planificado (Issue #15) como tab adicional jun
 ## Repo
 
 [https://github.com/ivanofmg/blackjack-trainer](https://github.com/ivanofmg/blackjack-trainer)
+
+## Métricas al avance de Fase 2 (#13)
+
+- **Tests:** 231 pasando
+- **Coverage:** global 94.44% (branches 93.23%)
+- **Lint:** 0 errores
+- **Build:** `next build` verde
+
+## Próximo paso sugerido
+
+- **Issue #14:** Vista de matriz de estrategia consultable.
+- Alternativa: saltar a desviaciones (Illustrious 18 / Fab 4) según preferencia del usuario.

@@ -95,8 +95,8 @@ describe('Table', () => {
     });
   });
 
-  it('shows round result banner and hides it after nextRound', async () => {
-    useGameStore.getState().__setShoe(makeShoe(['10', '9', '7', '9', '10']));
+  it('shows round result banner and starts next hand immediately after "Siguiente mano"', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', '9', '7', '9', '10', '4', '6', '8', '9']));
     render(<Table />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
@@ -115,6 +115,9 @@ describe('Table', () => {
     fireEvent.click(nextRoundButton);
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Siguiente mano' })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(useGameStore.getState().phase).toBe('playerTurn');
     });
   });
 
@@ -147,18 +150,14 @@ describe('Table', () => {
     });
   });
 
-  it('keeps previous round cards visible after clicking "Siguiente mano" until next deal', async () => {
+  it('clicking "Cambiar apuesta" returns to betting and shows BetSelector', async () => {
     useGameStore.getState().__setShoe(makeShoe(['10', '9', '7', '9', '10']));
     render(<Table />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Stand' }));
 
-    const nextRoundButton = await screen.findByRole(
-      'button',
-      { name: 'Siguiente mano' },
-      { timeout: 3000 },
-    );
+    const nextRoundButton = await screen.findByRole('button', { name: 'Cambiar apuesta' }, { timeout: 3000 });
     await waitFor(() => {
       expect(nextRoundButton).toBeEnabled();
     });
@@ -168,8 +167,7 @@ describe('Table', () => {
       expect(screen.queryByRole('button', { name: 'Siguiente mano' })).not.toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: 'Repartir' })).toBeInTheDocument();
-    expect(screen.getAllByRole('img').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Esperando reparto...')).not.toBeInTheDocument();
+    expect(useGameStore.getState().phase).toBe('betting');
   });
 
   it('shows dealer cards and revealed hole card when player busts', async () => {
