@@ -217,6 +217,30 @@ El ritmo corto del dealer turn (caso de BJ natural, ~1s total) implementado en #
 
 Default recomendado: **Medio**. El preset Lento ayuda especialmente para principiantes en Fase 2 (Tutor).
 
+## Ideas para Fase 2 (Tutor)
+
+### Auto-deal entre manos para acelerar volumen de práctica
+
+**Problema:** El ciclo actual requiere 2 clicks entre manos (`Siguiente mano` + `Repartir`). En 500 manos eso son 1000 clicks innecesarios. Para un trainer donde el volumen es central, esto es fricción significativa.
+
+**Propuesta — Opción híbrida:**
+
+El `RoundResultBanner` ofrece dos acciones:
+
+- **Botón principal "Siguiente mano":** ejecuta `nextRound()` + `deal()` en cascada con el `currentBet` persistido. Cero pasos extra.
+- **Botón secundario "Cambiar apuesta":** solo `nextRound()`. El usuario vuelve a la pantalla con `BetSelector` para ajustar antes de repartir.
+
+**Edge cases:**
+
+- Si `currentBet > bankroll` (después de pérdidas), el botón principal queda deshabilitado y se fuerza el flujo "Cambiar apuesta". El usuario decide conscientemente.
+- Si bankroll = 0 tras la mano, mostrar "Reiniciar bankroll" como hoy.
+
+**Decisión rechazada — Timer/auto-deal automático:** considerado pero descartado. Crea presión temporal artificial, mala UX para un trainer donde el ritmo lo decide el aprendiz.
+
+**Cuándo:** Inicio de Fase 2, junto con el primer issue del Tutor (que también modifica el banner para feedback de decisión). Implementar ambos cambios juntos evita re-tocar `RoundResultBanner` dos veces.
+
+**Esfuerzo estimado:** 50-80 líneas + tests. Cambio bien aislado.
+
 ## Ideas para Fase 4 (conteo)
 
 ### Contador Hi-Lo con modos de visibilidad
