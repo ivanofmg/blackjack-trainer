@@ -167,6 +167,63 @@ Encaja en el drawer de auditoría planificado (Issue #15) como tab adicional jun
 - **Lint:** 0 errores
 - **Build:** `next build` verde
 
+## Decisiones de UX — post #13 (auditoría visual)
+
+Auditoría visual en producción detectó dos problemas:
+
+1. **Espacio muerto a los lados de la mesa:** layout actual centrado deja
+   márgenes grandes en desktop sin uso.
+2. **Tutor valida pero no enseña:** muestra "Estrategia óptima: Hit" sin
+   explicar por qué. En casos contraintuitivos (soft 18 vs 9, par 4,4 vs 9,
+   hard 12 vs 2, hard 16 vs 10) el usuario sigue la sugerencia sin entender.
+
+### Decisión — Issue #14
+
+**Refactor de layout a panel lateral derecho + rationale de estrategia,
+en un solo issue.**
+
+Justificación de juntarlos: el rationale necesita un espacio fijo donde
+vivir sin saturar el hint actual. Si el layout es inline, el rationale queda
+apretado. Separar implicaría implementar rationale dos veces (inline primero,
+panel lateral después). Mejor un solo refactor coherente.
+
+**Alcance de #14:**
+
+- Grid responsivo 2 columnas en desktop (≥1280px), stack vertical en
+  tablet/mobile.
+- Panel lateral derecho fijo con:
+  - "¿Por qué esta decisión?" — explicación contextual de la jugada óptima
+    actual.
+  - "Decisiones del round" — historial acumulativo en vivo (no solo al
+    final en el banner).
+- Tabla paralela `RATIONALE_TABLE` mapeando categoría + total/par + upcard
+  → `{ short, long }`.
+- **30-40 celdas pedagógicas iniciales** (las contraintuitivas):
+  - Todas las de soft 18 (A,7) vs distintos upcards.
+  - Hard 12 vs 2 y 3.
+  - Hard 16 vs 10 / vs A.
+  - Pares 4,4 / 6,6 / 7,7 / 9,9 vs upcards específicos.
+  - Soft 13-17 cuándo doblar.
+  - 11 vs A.
+  - Doblar 9 vs 3-6.
+- **Fallback genérico** para celdas sin rationale propio.
+
+**Fuera de alcance de #14** (issues posteriores):
+- Las ~240 celdas restantes con rationale propio (se llenan iterativamente).
+- Animación de transición entre hints.
+- Tooltips sobre cada acción individual.
+
+### Decisión rechazada — Opción B (rationale inline)
+
+Considerada y descartada. Resolvía rationale pero no espacio muerto, y
+forzaría re-tocar la UI dos veces.
+
+### Decisión rechazada — Implementar 280 rationales desde día 1
+
+Considerada y descartada. Las celdas obvias (hard 5 vs 6 → Hit) no aportan
+valor pedagógico. Mejor invertir esfuerzo en las contraintuitivas y dejar
+fallback genérico para el resto. Iterar.
+
 ## Próximo paso sugerido
 
 - **Issue #14:** Vista de matriz de estrategia consultable.
