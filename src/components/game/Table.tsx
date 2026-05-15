@@ -7,11 +7,12 @@ import { selectShouldOfferInsurance, useGameStore, useHydratedGameStore } from '
 
 import { ActionControls } from './ActionControls';
 import { BankrollDisplay } from './BankrollDisplay';
+import { BetSelector } from './BetSelector';
 import { DealerArea } from './DealerArea';
 import { InsurancePrompt } from './InsurancePrompt';
 import { PlayerArea } from './PlayerArea';
 import { RoundResultBanner } from './RoundResultBanner';
-import { formatCurrency, type TableHandSize } from './Table.types';
+import { type TableHandSize } from './Table.types';
 
 const DEALER_RHYTHM = {
   beforeReveal: 600,
@@ -65,34 +66,6 @@ function GameOverScreen(): JSX.Element {
       <p className="text-lg font-bold text-red-100">Te quedaste sin saldo.</p>
       <Button type="button" className="mt-3" onClick={() => resetBankroll(1000)}>
         Reiniciar bankroll ($1,000)
-      </Button>
-    </section>
-  );
-}
-
-function BetPlaceholder(): JSX.Element {
-  const currentBet = useGameStore((state) => state.currentBet);
-  const bankroll = useGameStore((state) => state.bankroll);
-  const setBet = useGameStore((state) => state.setBet);
-  const deal = useGameStore((state) => state.deal);
-
-  const suggestedBet = Math.min(10, bankroll);
-
-  return (
-    <section className="w-full rounded-xl border border-white/15 bg-white/5 p-4">
-      <p className="text-sm text-white">
-        Apuesta: <span className="font-semibold">{formatCurrency(currentBet)}</span>
-      </p>
-      <Button
-        type="button"
-        className="mt-3"
-        disabled={bankroll <= 0}
-        onClick={() => {
-          setBet(suggestedBet);
-          deal();
-        }}
-      >
-        Repartir
       </Button>
     </section>
   );
@@ -171,7 +144,7 @@ export function Table(): JSX.Element {
         {phase === 'playerTurn' && !shouldOfferInsurance ? <ActionControls /> : null}
         {phase === 'playerTurn' && shouldOfferInsurance ? <InsurancePrompt /> : null}
         {showRoundResultBanner ? <RoundResultBanner /> : null}
-        {phase === 'betting' && bankroll > 0 && !lastRoundResult ? <BetPlaceholder /> : null}
+        {phase === 'betting' && bankroll > 0 && !lastRoundResult ? <BetSelector /> : null}
         {phase === 'gameOver' ? <GameOverScreen /> : null}
       </div>
     </main>

@@ -2,8 +2,10 @@ import { DEFAULT_RULES } from '@/lib/blackjack/types';
 import type { RulesConfig } from '@/lib/blackjack/types';
 
 export const DEFAULT_BANKROLL = 1000;
+export const DEFAULT_BET = 10;
 const BANKROLL_KEY = 'bj:bankroll';
 const RULES_KEY = 'bj:rules';
+const CURRENT_BET_KEY = 'bj:current-bet';
 
 function canUseLocalStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -51,6 +53,32 @@ export function saveBankroll(bankroll: number): void {
   }
 
   window.localStorage.setItem(BANKROLL_KEY, String(bankroll));
+}
+
+export function loadCurrentBet(defaultValue = DEFAULT_BET): number {
+  if (!canUseLocalStorage()) {
+    return defaultValue;
+  }
+
+  const raw = window.localStorage.getItem(CURRENT_BET_KEY);
+  if (raw === null) {
+    return defaultValue;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+    return defaultValue;
+  }
+
+  return parsed;
+}
+
+export function saveCurrentBet(bet: number): void {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(CURRENT_BET_KEY, String(bet));
 }
 
 export function loadRules(defaultValue: RulesConfig = DEFAULT_RULES): RulesConfig {

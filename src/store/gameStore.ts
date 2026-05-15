@@ -13,11 +13,21 @@ import { resolveRound as resolveRoundPayout } from '@/lib/blackjack/payout';
 import type { HandResolution } from '@/lib/blackjack/payout';
 import { DEFAULT_RULES } from '@/lib/blackjack/types';
 import type { Action, Card, GamePhase, Hand, RulesConfig } from '@/lib/blackjack/types';
-import { DEFAULT_BANKROLL, loadBankroll, loadRules, saveBankroll, saveRules } from '@/lib/storage';
+import {
+  DEFAULT_BANKROLL,
+  DEFAULT_BET,
+  loadBankroll,
+  loadCurrentBet,
+  loadRules,
+  saveBankroll,
+  saveCurrentBet,
+  saveRules,
+} from '@/lib/storage';
 
 interface PersistedState {
   bankroll: number;
   rules: RulesConfig;
+  currentBet: number;
 }
 
 let handIdCounter = 0;
@@ -89,6 +99,7 @@ function warnInvalid(actionName: string): void {
 function initialState(): Omit<GameStoreState, keyof GameStoreActions> {
   const bankroll = loadBankroll(DEFAULT_BANKROLL);
   const rules = loadRules(DEFAULT_RULES);
+  const currentBet = loadCurrentBet(DEFAULT_BET);
 
   return {
     bankroll,
@@ -98,7 +109,7 @@ function initialState(): Omit<GameStoreState, keyof GameStoreActions> {
     dealerHand: emptyDealerHand(),
     playerHands: [],
     activeHandIndex: 0,
-    currentBet: 10,
+    currentBet: bankroll > 0 ? Math.min(currentBet, bankroll) : currentBet,
     insuranceBet: 0,
     lastRoundResult: null,
     rngSeed: undefined,
@@ -213,6 +224,7 @@ function getPersistStorage() {
         state: {
           bankroll: loadBankroll(DEFAULT_BANKROLL),
           rules: loadRules(DEFAULT_RULES),
+          currentBet: loadCurrentBet(DEFAULT_BET),
         },
         version: 0,
       };
@@ -225,6 +237,7 @@ function getPersistStorage() {
       }
       saveBankroll(parsed.state.bankroll);
       saveRules(parsed.state.rules);
+      saveCurrentBet(parsed.state.currentBet);
     },
     removeItem: () => {
       if (typeof window === 'undefined') {
@@ -232,6 +245,7 @@ function getPersistStorage() {
       }
       window.localStorage.removeItem('bj:bankroll');
       window.localStorage.removeItem('bj:rules');
+      window.localStorage.removeItem('bj:current-bet');
     },
   }));
 }
@@ -246,6 +260,7 @@ export const useGameStore = create<GameStore>()(
           warnInvalid('setBet');
           return;
         }
+        saveCurrentBet(amount);
         set({ currentBet: amount });
       },
       deal: () => {
@@ -791,6 +806,7 @@ export const useGameStore = create<GameStore>()(
       partialize: (state) => ({
         bankroll: state.bankroll,
         rules: state.rules,
+        currentBet: state.currentBet,
       }),
     },
   ),

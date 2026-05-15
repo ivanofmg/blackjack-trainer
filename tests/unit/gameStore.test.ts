@@ -318,16 +318,27 @@ describe('gameStore', () => {
     useGameStore.setState({ phase: 'gameOver' });
     useGameStore.getState().resetBankroll(777);
     useGameStore.getState().updateRules({ decks: 2, penetration: 0.5 });
+    useGameStore.getState().setBet(75);
     useGameStore.setState({ shoe: makeShoe(['A', 'K']), phase: 'playerTurn' });
 
     const persistedBankroll = localStorage.getItem('bj:bankroll');
     const persistedRules = localStorage.getItem('bj:rules');
+    const persistedCurrentBet = localStorage.getItem('bj:current-bet');
     const persistedStore = localStorage.getItem('bj:game-store');
 
     expect(persistedBankroll).toBe('777');
     expect(persistedRules).not.toBeNull();
     expect(persistedRules).toContain('"decks":2');
+    expect(persistedCurrentBet).toBe('75');
     expect(persistedStore).toBeNull();
+  });
+
+  it('persists currentBet after store re-initialization', () => {
+    useGameStore.getState().setBet(75);
+    expect(state().currentBet).toBe(75);
+
+    useGameStore.getState().__resetForTests();
+    expect(state().currentBet).toBe(75);
   });
 
   it('selector legal actions delegates to blackjack actions lib', () => {

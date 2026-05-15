@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 12/12 issues cerrados + sub-issues de pulido visual (#11b, #11c, #11d)
+**Progreso Fase 1:** COMPLETADA
 
 ## Issues cerrados
 
@@ -25,14 +25,17 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#11b** Fix post-auditoría visual de mesa — ritmo visible en `dealerTurn` con orquestación de delays en UI, store granular (`revealHoleCard`, `dealerDrawNext`, `finishDealerTurn`) y `RoundResultBanner` reforzado con jerarquía visual + delay de lectura antes de `nextRound`
 - **#11c** Fix persistencia visual post-round — `nextRound()` ya no limpia manos, `DealerArea` renderiza cartas siempre que existan y `RoundResultBanner` comunica explícitamente cuándo el dealer no jugó
 - **#11d** Fix ritmo corto para BJ natural del dealer — `playDealer()` diferencia “nadie necesita dealer” (cascadeo directo) de “dealer BJ con jugador vivo” (reveal + finish con orquestador, sin draws)
+- **#12** UI: BetSelector completo — input numerico de apuesta, presets, `All-in`, validacion visual, submit con Enter y persistencia del ultimo bet
 
-## Issues abiertos en Fase 1
+## Fase 1 — COMPLETADA ✅
 
-- **#12** UI: pantalla de apuestas
+12/12 issues principales + 4 sub-issues de refinamiento (`#10b`, `#11b`, `#11c`, `#11d`) cerrados.
+
+Resultado: mesa funcional de blackjack jugable end-to-end con reglas correctas, persistencia de bankroll/rules/bet, ritmo visible del dealer, banner pedagogico y sandbox de componentes.
 
 ## Métricas actuales
 
-- **Tests:** 169 pasando en 14 archivos
+- **Tests:** 183 pasando en 15 archivos
 - **Coverage:** 100% en `src/lib/blackjack/*` y >90% global
 - **Lint:** 0 errores, 0 warnings
 - **TypeScript:** estricto, sin `any`
@@ -89,6 +92,7 @@ Pasar los 4 antes de commit + push + close issue.
 - **`nextRound()` solo limpia `lastRoundResult`**: las cartas del round persisten visibles en mesa hasta el próximo `deal()`, que reemplaza por completo dealer/player hands y resetea campos transitorios del round.
 - **`RoundResult` incluye `dealerPlayed: boolean`**: el banner distingue entre “dealer resolvió su turno” y “dealer no jugó” (bust/surrender/all resolved early).
 - **`playDealer()` ahora distingue 3 rutas**: (1) cascadeo directo si no hay manos vivas, (2) ritmo corto si dealer tiene BJ natural con jugador vivo (`pendingDealerSteps=[]`), (3) ritmo normal cuando el dealer debe pedir cartas.
+- **`currentBet` persiste en localStorage**: helpers de `src/lib/storage/*` y store sincronizan el ultimo monto valido de apuesta entre manos y recargas.
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -133,14 +137,13 @@ npm test
 ```
 
 - Confirmar que estás en branch `main` y sincronizado con `origin/main`.
-- Continuar con Issue #12 (UI de apuestas completa). Pedirle al asistente
-  el prompt detallado para este issue antes de empezar.
+- Iniciar Fase 2 (Tutor de estrategia basica) desde un issue de plan.
 
 ## Próximo paso
 
-**Issue #12 — UI de apuestas completa (BetSelector).** Reemplazar placeholder de "Repartir"
-por selector completo de apuesta (chips/input/validaciones) integrado con bankroll
-y fases del round.
+**Fase 2 — Tutor de estrategia basica.** Antes de arrancar, considerar abrir el
+**Issue #15** (drawer de auditoria con discard pile + historial) como base para
+registrar decisiones y retroalimentacion del tutor.
 
 ## Lecciones aprendidas
 
@@ -201,6 +204,18 @@ Esto es coherente con la decisión arquitectónica original (#8): el round en cu
 **Justificación de no arreglarlo ahora:** la mayoría de apps de casino online se comportan igual. F5 durante una mano es responsabilidad del usuario.
 
 **Si se decide cambiar:** la opción más simple es persistir `roundStartBankroll` y, al detectar al cargar que había un round en curso (presencia de cartas en `playerHands`), restituir el bet al bankroll antes de inicializar como `betting`. Esto trata el round abandonado como "nunca pasó". Cambio estimado: ~30 líneas, riesgo bajo si se hace con tests.
+
+### Velocidad del dealer turn imperceptible en ritmo corto
+
+El ritmo corto del dealer turn (caso de BJ natural, ~1s total) implementado en #11d es tecnicamente correcto pero perceptualmente sutil; en validacion visual el usuario puede no notarlo de forma consciente.
+
+**Propuesta:** cuando exista la pantalla de Ajustes (Fase 2 o issue independiente), exponer `DEALER_RHYTHM` como configurable con presets:
+
+- Lento (pedagogico): reveal `1200ms`, between `800ms`, finish `600ms`.
+- Medio (actual): reveal `600ms`, between `500ms`, finish `400ms`.
+- Rapido: reveal `300ms`, between `250ms`, finish `200ms`.
+
+Default recomendado: **Medio**. El preset Lento ayuda especialmente para principiantes en Fase 2 (Tutor).
 
 ## Ideas para Fase 4 (conteo)
 

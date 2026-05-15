@@ -2,7 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { DEFAULT_RULES } from '@/lib/blackjack/types';
 import type { RulesConfig } from '@/lib/blackjack/types';
-import { DEFAULT_BANKROLL, loadBankroll, loadRules, saveBankroll, saveRules } from '@/lib/storage';
+import {
+  DEFAULT_BANKROLL,
+  DEFAULT_BET,
+  loadBankroll,
+  loadCurrentBet,
+  loadRules,
+  saveBankroll,
+  saveCurrentBet,
+  saveRules,
+} from '@/lib/storage';
 
 describe('localStorage helpers', () => {
   beforeEach(() => {
@@ -30,6 +39,16 @@ describe('localStorage helpers', () => {
     expect(loadRules()).toEqual(customRules);
   });
 
+  it('loadCurrentBet returns default when storage is empty', () => {
+    expect(loadCurrentBet()).toBe(DEFAULT_BET);
+    expect(loadCurrentBet(25)).toBe(25);
+  });
+
+  it('saveCurrentBet and loadCurrentBet roundtrip', () => {
+    saveCurrentBet(75);
+    expect(loadCurrentBet()).toBe(75);
+  });
+
   it('returns defaults safely when window is undefined (SSR guard)', () => {
     const originalWindow = globalThis.window;
 
@@ -41,8 +60,10 @@ describe('localStorage helpers', () => {
 
     try {
       expect(loadBankroll(250)).toBe(250);
+      expect(loadCurrentBet(15)).toBe(15);
       expect(loadRules(DEFAULT_RULES)).toEqual(DEFAULT_RULES);
       expect(() => saveBankroll(100)).not.toThrow();
+      expect(() => saveCurrentBet(50)).not.toThrow();
       expect(() => saveRules(DEFAULT_RULES)).not.toThrow();
     } finally {
       Object.defineProperty(globalThis, 'window', {
