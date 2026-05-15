@@ -98,6 +98,7 @@ describe('gameStore', () => {
     expect(state().phase).toBe('betting');
     expect(state().playerHands[0].isResolved).toBe(true);
     expect(state().lastRoundResult?.handResults[0].resolution.outcome).toBe('lose');
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
   });
 
   it('stand resolves current hand and advances round', () => {
@@ -112,6 +113,7 @@ describe('gameStore', () => {
     expect(state().phase).toBe('betting');
     expect(state().playerHands[0].isResolved).toBe(true);
     expect(state().lastRoundResult).not.toBeNull();
+    expect(state().lastRoundResult?.dealerPlayed).toBe(true);
   });
 
   it('double deducts extra bet, draws one card and resolves hand', () => {
@@ -194,6 +196,7 @@ describe('gameStore', () => {
     expect(state().bankroll).toBe(DEFAULT_BANKROLL - 5);
     expect(state().playerHands[0].isSurrendered).toBe(true);
     expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
   });
 
   it('insurance is offered only with dealer ace and pays 2:1 when dealer has blackjack', () => {
@@ -207,6 +210,7 @@ describe('gameStore', () => {
     expect(state().phase).toBe('betting');
     expect(state().bankroll).toBe(DEFAULT_BANKROLL);
     expect(state().lastRoundResult?.insurancePayout).toBe(15);
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
   });
 
   it('después de declineInsurance sin dealer blackjack, la mano sigue jugable', () => {
@@ -392,5 +396,117 @@ describe('gameStore', () => {
     expect(state().phase).toBe('betting');
     expect(state().lastRoundResult?.handResults[0].resolution.outcome).toBe('blackjack');
     expect(selectIsDealerTurnInProgress(state())).toBe(false);
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
+  });
+
+  it('nextRound only clears lastRoundResult and keeps table cards', () => {
+    setRoundShoe(makeShoe(['10', '9', '7', '9', '10']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+    advanceDealerTurn();
+
+    const dealerCardsBefore = state().dealerHand.cards;
+    const playerCardsBefore = state().playerHands.map((hand) => hand.cards);
+    expect(state().lastRoundResult).not.toBeNull();
+
+    useGameStore.getState().nextRound();
+
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult).toBeNull();
+    expect(state().dealerHand.cards).toEqual(dealerCardsBefore);
+    expect(state().playerHands.map((hand) => hand.cards)).toEqual(playerCardsBefore);
+  });
+
+  it('deal replaces residual previous-round cards instead of appending', () => {
+    useGameStore.setState({
+      phase: 'betting',
+      dealerHand: {
+        cards: [makeCard('A', 'spades'), makeCard('K', 'hearts')],
+        bet: 0,
+        isDoubled: false,
+        isSplit: false,
+        isSurrendered: false,
+        isStood: true,
+      },
+      playerHands: [
+        {
+          id: 'residual-hand',
+          cards: [makeCard('10', 'clubs'), makeCard('8', 'diamonds'), makeCard('5', 'hearts')],
+          bet: 10,
+          isDoubled: false,
+          isSplit: false,
+          isSurrendered: false,
+          isStood: true,
+          isFromSplitAces: false,
+          isResolved: true,
+        },
+      ],
+      activeHandIndex: 0,
+      splitsUsed: 2,
+      isInsuranceOffered: true,
+      insuranceBet: 5,
+      pendingDealerSteps: [makeCard('2', 'clubs')],
+      isHoleCardRevealed: true,
+      roundStartBankroll: DEFAULT_BANKROLL,
+      lastRoundResult: null,
+    });
+    setRoundShoe(makeShoe(['4', '6', '7', '9']));
+    useGameStore.getState().setBet(10);
+
+    useGameStore.getState().deal();
+
+    expect(state().playerHands).toHaveLength(1);
+    expect(state().playerHands[0].cards).toEqual([makeCard('4', 'clubs'), makeCard('7', 'clubs')]);
+    expect(state().dealerHand.cards).toEqual([makeCard('6', 'clubs'), makeCard('9', 'clubs')]);
+    expect(state().splitsUsed).toBe(0);
+    expect(state().isInsuranceOffered).toBe(false);
+    expect(state().insuranceBet).toBe(0);
+    expect(state().pendingDealerSteps).toEqual([]);
+    expect(state().isHoleCardRevealed).toBe(false);
+  });
+
+  it('dealerPlayed is true when at least one player hand survives to dealer turn', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().stand();
+    advanceDealerTurn();
+
+    expect(state().lastRoundResult?.dealerPlayed).toBe(true);
+  });
+
+  it('dealerPlayed is false when player busts before dealer plays', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9', '10']));
+    useGameStore.getState().deal();
+    useGameStore.getState().hit();
+
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
+  });
+
+  it('dealerPlayed is false when all player hands surrender', () => {
+    setRoundShoe(makeShoe(['10', '6', '7', '9']));
+    useGameStore.getState().deal();
+    useGameStore.getState().surrender();
+
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
+  });
+
+  it('dealerPlayed is true for split rounds when one hand busts and another remains', () => {
+    setRoundShoe(makeShoe(['8', '6', '8', '9', 'K', '2', 'K', '5']));
+    useGameStore.getState().deal();
+    useGameStore.getState().split();
+    useGameStore.getState().hit();
+    useGameStore.getState().stand();
+    advanceDealerTurn();
+
+    expect(state().lastRoundResult?.dealerPlayed).toBe(true);
+  });
+
+  it('dealerPlayed is false when dealer has natural blackjack from insurance path', () => {
+    setRoundShoe(makeShoe(['10', 'A', '7', 'K']));
+    useGameStore.getState().deal();
+    useGameStore.getState().declineInsurance();
+
+    expect(state().phase).toBe('betting');
+    expect(state().lastRoundResult?.dealerPlayed).toBe(false);
   });
 });

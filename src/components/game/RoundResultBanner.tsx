@@ -54,7 +54,10 @@ function getAmountLabel(amount: number): string {
   return formatCurrency(0);
 }
 
-function dealerLine(total: number, isBust: boolean): string {
+function dealerLine(total: number, isBust: boolean, dealerPlayed: boolean): string {
+  if (!dealerPlayed) {
+    return 'Dealer no jugó';
+  }
   return isBust ? `Dealer: ${total} (Bust)` : `Dealer: ${total}`;
 }
 
@@ -88,7 +91,7 @@ export function RoundResultBanner(): JSX.Element | null {
         {getAmountLabel(lastRoundResult.netTotal)}
       </p>
       <p className="mt-2 text-base text-slate-300">
-        {dealerLine(lastRoundResult.dealerValue.total, lastRoundResult.dealerValue.isBust)}
+        {dealerLine(lastRoundResult.dealerValue.total, lastRoundResult.dealerValue.isBust, lastRoundResult.dealerPlayed)}
       </p>
 
       {hasSplit ? (

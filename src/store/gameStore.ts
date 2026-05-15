@@ -126,6 +126,7 @@ export interface RoundResult {
   insurancePayout: number;
   netTotal: number;
   dealerValue: HandValue;
+  dealerPlayed: boolean;
 }
 
 export interface GameStoreState {
@@ -666,6 +667,10 @@ export const useGameStore = create<GameStore>()(
         }
 
         const dealerValue = handValue(state.dealerHand.cards);
+        const dealerWouldPlay = state.playerHands.some((hand) => !hand.isSurrendered && !handValue(hand.cards).isBust);
+        const allPlayerHandsBlackjack =
+          state.playerHands.length > 0 && state.playerHands.every((hand) => handValue(hand.cards).isBlackjack);
+        const dealerPlayed = dealerWouldPlay && !dealerValue.isBlackjack && !allPlayerHandsBlackjack;
         const resolutions = resolveRoundPayout(state.playerHands, dealerValue, state.rules);
         const handPayout = resolutions.reduce((sum, resolution, index) => {
           if (state.playerHands[index].isSurrendered) {
@@ -691,6 +696,7 @@ export const useGameStore = create<GameStore>()(
             insurancePayout,
             netTotal,
             dealerValue,
+            dealerPlayed,
           },
           phase: bankroll === 0 ? 'gameOver' : 'betting',
           isInsuranceOffered: false,
@@ -703,22 +709,14 @@ export const useGameStore = create<GameStore>()(
       },
       nextRound: () => {
         const state = get();
-        if (state.phase !== 'betting' && state.phase !== 'gameOver') {
+        if (state.phase !== 'betting') {
           warnInvalid('nextRound');
           return;
         }
 
         set({
-          dealerHand: emptyDealerHand(),
-          playerHands: [],
-          activeHandIndex: 0,
-          insuranceBet: 0,
-          isInsuranceOffered: false,
           lastRoundResult: null,
-          splitsUsed: 0,
-          roundStartBankroll: null,
-          pendingDealerSteps: [],
-          isHoleCardRevealed: false,
+          phase: 'betting',
         });
       },
       resetBankroll: (amount) => {

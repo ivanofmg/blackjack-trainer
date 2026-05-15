@@ -42,6 +42,7 @@ describe('Table', () => {
 
     expect(await screen.findByRole('button', { name: 'Repartir' })).toBeInTheDocument();
     expect(screen.queryAllByRole('img')).toHaveLength(0);
+    expect(screen.getByText('Esperando reparto...')).toBeInTheDocument();
   });
 
   it('renders dealer/player cards after deal, hiding dealer hole card', async () => {
@@ -144,6 +145,44 @@ describe('Table', () => {
     await waitFor(() => {
       expect(screen.queryByText('El dealer muestra As. ¿Tomás seguro?')).not.toBeInTheDocument();
     });
+  });
+
+  it('keeps previous round cards visible after clicking "Siguiente mano" until next deal', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', '9', '7', '9', '10']));
+    render(<Table />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stand' }));
+
+    const nextRoundButton = await screen.findByRole(
+      'button',
+      { name: 'Siguiente mano' },
+      { timeout: 3000 },
+    );
+    await waitFor(() => {
+      expect(nextRoundButton).toBeEnabled();
+    });
+    fireEvent.click(nextRoundButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Siguiente mano' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Repartir' })).toBeInTheDocument();
+    expect(screen.getAllByRole('img').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Esperando reparto...')).not.toBeInTheDocument();
+  });
+
+  it('shows dealer cards and revealed hole card when player busts', async () => {
+    useGameStore.getState().__setShoe(makeShoe(['10', '6', '7', '9', '10']));
+    render(<Table />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Repartir' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Hit' }));
+
+    await screen.findByRole('button', { name: 'Siguiente mano' });
+    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(5);
+    expect(screen.queryByRole('img', { name: 'Carta boca abajo' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Esperando reparto...')).not.toBeInTheDocument();
   });
 
   it('orchestrates dealer rhythm in order using timers', async () => {

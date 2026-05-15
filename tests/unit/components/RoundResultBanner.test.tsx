@@ -17,6 +17,7 @@ type MockRoundResult = Readonly<{
   insuranceBet: number;
   insurancePayout: number;
   netTotal: number;
+  dealerPlayed: boolean;
   dealerValue: {
     total: number;
     isSoft: boolean;
@@ -45,6 +46,7 @@ const singleHandBase: MockRoundResult = {
   insuranceBet: 0,
   insurancePayout: 0,
   netTotal: 10,
+  dealerPlayed: true,
   dealerValue: {
     total: 19,
     isSoft: false,
@@ -158,5 +160,49 @@ describe('RoundResultBanner', () => {
   it('omits split breakdown for a single hand', () => {
     render(<RoundResultBanner />);
     expect(screen.queryByText(/Mano 1:/)).not.toBeInTheDocument();
+  });
+
+  it('shows dealer total line when dealer played', () => {
+    render(<RoundResultBanner />);
+    expect(screen.getByText('Dealer: 19')).toBeInTheDocument();
+  });
+
+  it('shows dealer bust line when dealer played and busts', () => {
+    mockState = {
+      ...mockState,
+      lastRoundResult: {
+        ...singleHandBase,
+        dealerPlayed: true,
+        dealerValue: {
+          ...singleHandBase.dealerValue,
+          total: 24,
+          isBust: true,
+          hardTotal: 24,
+          softTotal: null,
+        },
+      },
+    };
+
+    render(<RoundResultBanner />);
+    expect(screen.getByText('Dealer: 24 (Bust)')).toBeInTheDocument();
+  });
+
+  it('shows "Dealer no jugó" when dealer did not play', () => {
+    mockState = {
+      ...mockState,
+      lastRoundResult: {
+        ...singleHandBase,
+        dealerPlayed: false,
+        dealerValue: {
+          ...singleHandBase.dealerValue,
+          total: 14,
+          hardTotal: 14,
+          softTotal: null,
+        },
+      },
+    };
+
+    render(<RoundResultBanner />);
+    expect(screen.getByText('Dealer no jugó')).toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 **Fecha último avance:** 14 mayo 2026
 **Fase activa:** Fase 1 — Mesa funcional
-**Progreso Fase 1:** 12/12 issues cerrados (mesa principal integrada + ritmo dealerTurn y banner reforzado)
+**Progreso Fase 1:** 12/12 issues cerrados + sub-issues de pulido visual (#11b, #11c)
 
 ## Issues cerrados
 
@@ -23,6 +23,7 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 - **#10b** Fix post-review de Hand — `src/lib/blackjack/hand.ts` ahora expone `hardTotal`/`softTotal`; `Hand` recibe `role` para aria-label correcto de dealer en playerTurn y resolution
 - **#11** UI: mesa principal — `src/components/game/Table.tsx` + áreas dealer/jugador + controles + insurance prompt + banner de resultado + game over, todo conectado a `src/store/gameStore.ts`
 - **#11b** Fix post-auditoría visual de mesa — ritmo visible en `dealerTurn` con orquestación de delays en UI, store granular (`revealHoleCard`, `dealerDrawNext`, `finishDealerTurn`) y `RoundResultBanner` reforzado con jerarquía visual + delay de lectura antes de `nextRound`
+- **#11c** Fix persistencia visual post-round — `nextRound()` ya no limpia manos, `DealerArea` renderiza cartas siempre que existan y `RoundResultBanner` comunica explícitamente cuándo el dealer no jugó
 
 ## Issues abiertos en Fase 1
 
@@ -84,6 +85,8 @@ Pasar los 4 antes de commit + push + close issue.
 - **`playDealerHand` ahora expone `steps`**: además de `hand`/`shoe` final, devuelve la secuencia de cartas nuevas que el dealer robó para habilitar ritmo visual sin mover lógica de blackjack a UI.
 - **Store sin cascadeo automático `dealerTurn -> resolution` cuando hay cartas por mostrar**: `playDealer()` precomputa y guarda `pendingDealerSteps`; la UI (`Table`) orquesta tiempos con `setTimeout` y llama acciones granulares.
 - **Acciones granulares de dealer en store**: `revealHoleCard`, `dealerDrawNext`, `finishDealerTurn` mantienen estado real en sync con lo que ve el usuario (sin delays en store).
+- **`nextRound()` solo limpia `lastRoundResult`**: las cartas del round persisten visibles en mesa hasta el próximo `deal()`, que reemplaza por completo dealer/player hands y resetea campos transitorios del round.
+- **`RoundResult` incluye `dealerPlayed: boolean`**: el banner distingue entre “dealer resolvió su turno” y “dealer no jugó” (bust/surrender/all resolved early).
 
 ## Reglas de la mesa (DEFAULT_RULES — Strip de Las Vegas)
 
@@ -186,6 +189,16 @@ y fases del round.
 ### Validaciones pendientes
 
 - **Performance en móvil real:** sandbox validado solo en desktop. Probar en dispositivo físico (no DevTools responsive) antes de Issue #11.
+
+### Persistencia del round en F5
+
+Comportamiento actual: si el usuario refresca la página durante un round, pierde el round entero (incluido el bet ya descontado del bankroll). El bankroll persistido refleja el descuento del bet pero no se devuelve.
+
+Esto es coherente con la decisión arquitectónica original (#8): el round en curso no se persiste para evitar complejidad de hidratación con un state machine a mitad de transición.
+
+**Justificación de no arreglarlo ahora:** la mayoría de apps de casino online se comportan igual. F5 durante una mano es responsabilidad del usuario.
+
+**Si se decide cambiar:** la opción más simple es persistir `roundStartBankroll` y, al detectar al cargar que había un round en curso (presencia de cartas en `playerHands`), restituir el bet al bankroll antes de inicializar como `betting`. Esto trata el round abandonado como "nunca pasó". Cambio estimado: ~30 líneas, riesgo bajo si se hace con tests.
 
 ## Resultado de auditoría visual post-deploy (sandbox)
 
