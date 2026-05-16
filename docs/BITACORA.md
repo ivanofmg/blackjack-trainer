@@ -4,10 +4,10 @@ Registro de progreso para retomar en sesiones futuras con Cursor/Claude.
 
 ## Estado actual
 
-**Fecha último avance:** 14 mayo 2026
+**Fecha último avance:** 15 mayo 2026
 **Fase activa:** Fase 2 — Tutor de estrategia básica
 **Progreso Fase 1:** COMPLETADA ✅ (12 issues principales + 4 sub-issues de refinamiento)
-**Progreso Fase 2:** 1/N issues (#13 cerrado)
+**Progreso Fase 2:** 2/N issues (#13 y #14 cerrados)
 
 ## Hitos cerrados
 
@@ -29,6 +29,7 @@ Sub-issues de refinamiento (4):
 Issues cerrados:
 
 - **#13:** Tutor de estrategia básica (S17/DAS/LS) + auto-deal entre manos.
+- **#14 (GH #18):** Panel lateral derecho + rationale de estrategia (36 celdas pedagógicas). Incluye fix histórico en `basicStrategy.ts` (hard 9 vs 3: H → Dh).
 
 ## Métricas al cierre de Fase 1
 
@@ -51,13 +52,13 @@ npm install
 npm test
 ```
 
-Deberías ver 231 tests pasando y `main` sincronizado con `origin/main`.
+Deberías ver 238 tests pasando y `main` sincronizado con `origin/main`.
 
-1. Próximo issue: **#14 — Vista de matriz de estrategia consultable**.
-   Si no se conserva el contexto, pedir al asistente regenerar el prompt referenciando:
-   - PRD sección 4.2 (Fase 2 — Tutor de estrategia básica)
-   - PRD sección 9 (métricas: <50ms respuesta del tutor)
-   - Bloque "Auto-deal entre manos" en este archivo (ya implementado como decisión técnica)
+1. Próximo issue: **#15 — Log de decisiones del modo tutor (cruce decisión × outcome)**.
+   Stub de tipo `DecisionLogEntry` ya quedó listo en `src/lib/strategy/decisionLog.ts`
+   tras #14. Issue #15 implementa logging granular + persistencia LocalStorage +
+   vista mínima de últimas N decisiones. Ver decisiones acordadas en sección
+   "Decisión — Log de decisiones (post pregunta sobre tutor)" más abajo.
 
 ## Decisiones técnicas relevantes (acumuladas)
 
@@ -187,10 +188,10 @@ Encaja en el drawer de auditoría planificado (Issue #15) como tab adicional jun
 
 [https://github.com/ivanofmg/blackjack-trainer](https://github.com/ivanofmg/blackjack-trainer)
 
-## Métricas al avance de Fase 2 (#13)
+## Métricas al avance de Fase 2 (#14)
 
-- **Tests:** 231 pasando
-- **Coverage:** global 94.44% (branches 93.23%)
+- **Tests:** 238 pasando
+- **Coverage:** global 94.44% statements, 94.37% lines
 - **Lint:** 0 errores
 - **Build:** `next build` verde
 
@@ -251,7 +252,58 @@ Considerada y descartada. Las celdas obvias (hard 5 vs 6 → Hit) no aportan
 valor pedagógico. Mejor invertir esfuerzo en las contraintuitivas y dejar
 fallback genérico para el resto. Iterar.
 
+## Decisión — Log de decisiones (post pregunta sobre tutor)
+
+- **Cuándo:** Issue #15, inmediatamente después de #14.
+- **Preparación en #14 (cumplida):** se agregó solo el tipo `DecisionLogEntry`
+  en `src/lib/strategy/decisionLog.ts` con TODO referenciando #15. Sin lógica,
+  sin store, sin persistencia. Cero deuda técnica.
+- **Alcance de #15:** logging granular en modo tutor (decisión por decisión,
+  agrupable por sub-mano), persistencia en LocalStorage vía `src/lib/storage/`,
+  más vista mínima de las últimas N decisiones (N a definir en el prompt de #15,
+  probablemente 20-50).
+- **Fuera de #15 (diferido):** stats agregadas (% acierto, top 5 errores, mapa
+  de calor) — ya estaban en PRD §4.2 y se atacan en issue posterior con la UI
+  completa.
+
+### Separación crítica: corrección × resultado
+
+El log distingue dos ejes independientes y los cruza al consultar:
+
+1. **Corrección de la decisión:** objetiva, comparada contra la tabla de
+   estrategia básica (S17/DAS/LS).
+2. **Resultado de la sub-mano que contiene esa decisión:** sujeto a varianza,
+   denormalizado en cada `DecisionLogEntry` al resolverse la mano.
+
+El cuadrante crítico es **"decisión incorrecta + ganaste"**: refuerzo positivo
+equivocado, principal enemigo del aprendizaje serio de blackjack. La UI debe
+señalarlo explícitamente. Las decisiones correctas que perdieron se marcan como
+neutras ("varianza"), no como fallo.
+
+### Granularidad de la asociación
+
+- `handId` identifica **sub-manos** post-split, no el round entero.
+- Una decisión que vive en la sub-mano A se asocia al `netPayout` de la
+  sub-mano A, no al neto del round con todas las sub-manos sumadas.
+- Razón: el usuario debe ver consecuencia directa de su decisión, sin
+  contaminación de sub-manos paralelas.
+
+### Decisiones rechazadas (registradas para no reabrirlas)
+
+- **Asociar decisiones al round entero:** descartado por contaminación
+  pedagógica entre sub-manos paralelas tras split.
+- **Mapear surrender a loss:** descartado por distorsionar la lectura del
+  cuadrante decisión×outcome. `surrender` es categoría propia en `handOutcome`.
+- **Vista completa con filtros en #15:** diferido. Solo vista mínima de últimas
+  N decisiones en #15. Vista completa con filtros queda para issue posterior
+  junto a stats agregadas.
+
 ## Próximo paso sugerido
 
-- **Issue #14:** Vista de matriz de estrategia consultable.
-- Alternativa: saltar a desviaciones (Illustrious 18 / Fab 4) según preferencia del usuario.
+- **Issue #15:** Log de decisiones del modo tutor con cruce decisión × outcome.
+  Stub de tipo ya listo en `src/lib/strategy/decisionLog.ts`. Ver decisiones
+  acordadas en "Decisión — Log de decisiones (post pregunta sobre tutor)".
+- **Issue #16+ candidatos:** vista de matriz de estrategia consultable como
+  referencia (originalmente pensado para #14, quedó pendiente porque #14 viró a
+  panel lateral + rationale). O saltar a desviaciones (Illustrious 18 / Fab 4)
+  para Fase 3.
