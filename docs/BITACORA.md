@@ -102,6 +102,13 @@ Deberías ver 231 tests pasando y `main` sincronizado con `origin/main`.
   La regla queda así: fuente canónica externa es verdad última; `basicStrategy`
   debe coincidir con ella; rationale debe coincidir con `basicStrategy`. Si dos
   de las tres difieren, no avanzar sin validar la tercera.
+- **Numeración GH ↔ bitácora interna (post #14):** se abandona el patrón
+  inferido "interno #N → GH #N+4". A partir de #15 cada issue interno tiene
+  un GH issue propio creado al inicio del trabajo (no retroactivo). El número
+  GH se referencia en el cierre con `Closes #N`. Si un issue interno no
+  necesita visibilidad pública, se documenta solo en bitácora sin GH. #14
+  quedó con GH issue retroactivo (creado y cerrado en la misma pasada,
+  referenciando commit 513343d).
 
 ## Deuda técnica registrada
 
