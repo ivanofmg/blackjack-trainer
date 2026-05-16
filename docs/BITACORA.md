@@ -82,6 +82,26 @@ Deberías ver 231 tests pasando y `main` sincronizado con `origin/main`.
 - **Pares de valor 10:** manos 10/J, J/Q, etc. se categorizan como `'TT'` y siguen la tabla de pares (stand), consistente con `canSplitByValue`.
 - **Histórico de errores:** `stats.mistakes` guarda todos los errores históricos; `topMistakes()` es solo selector top 5.
 - **Estado efímero de round:** `currentRoundDecisions` y `lastDecision` no se persisten; se limpian con `clearCurrentRoundDecisions` al avanzar de mano.
+- **Validación A,6 vs 2 (post #14):** soft 17 vs 2 en S17 es HIT, no Double.
+  Fuente: Wizard of Odds, 4-deck strategy chart S17. Confirma `basicStrategy.ts`.
+  Mi prompt inicial tenía error propagado en "corrección" de celda 6; corregido
+  durante implementación gracias a la verificación cruzada con basicStrategy
+  que pedía el propio prompt. Lección: las "correcciones de último momento"
+  en prompts con tablas matemáticas requieren validación contra fuente canónica
+  antes de pasarlas a Cursor.
+- **Bug corregido en basicStrategy (post #14):** `HARD_STRATEGY` tenía
+  `H` en hard 9 vs 3 cuando la fuente canónica (Wizard of Odds, S17,
+  4-8 decks) marca Double. Corregido a `Dh`. Detectado por cruce
+  rationale↔basicStrategy introducido en #14. Lección: la falta de
+  validación cruzada en Fase 2 dejó pasar el bug; con #14 ya no es
+  posible que rationale y basicStrategy diverjan sin que tests fallen.
+- **Lección post #14:** el cruce rationale↔basicStrategy detectó dos casos
+  importantes durante implementación: (a) A,6 vs 2: error de prompt, código
+  correcto. (b) Hard 9 vs 3: código incorrecto, prompt correcto. Validar
+  contra fuente externa (Wizard of Odds) fue el desempate en ambos casos.
+  La regla queda así: fuente canónica externa es verdad última; `basicStrategy`
+  debe coincidir con ella; rationale debe coincidir con `basicStrategy`. Si dos
+  de las tres difieren, no avanzar sin validar la tercera.
 
 ## Deuda técnica registrada
 

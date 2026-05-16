@@ -48,6 +48,8 @@ describe('basic strategy tables', () => {
     expect(hard(11, 'A')).toBe('H');
     expect(hard(10, '9')).toBe('Dh');
     expect(hard(10, '10')).toBe('H');
+    // FIX: era hit (bug histórico), validado vs Wizard of Odds S17.
+    expect(hard(9, '3')).toBe('Dh');
     expect(hard(9, '6')).toBe('Dh');
     expect(hard(9, '2')).toBe('H');
     expect(hard(8, '6')).toBe('H');
